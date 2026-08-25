@@ -11,17 +11,25 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "next": "^15.5.23",
+    "next-auth": "^5.0.0-beta.32",
+    "prisma": "^6.19.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zod": "^4.4.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
@@ -29,6 +37,7 @@
     "eslint-config-next": "^16.3.2",
     "jsdom": "^30.0.1",
     "tailwindcss": "^4.1.14",
+    "tsx": "^4.23.12",
     "typescript": "~5.8.2",
     "vitest": "^4.1.11"
   }
