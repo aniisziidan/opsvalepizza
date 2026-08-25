@@ -271,16 +271,18 @@ model StoredFile {                                 // spec §35 files
 
 ## 3. Phase Roadmap
 
-| Phase | Name | Outcome | Detailed here? |
+**Status as of 2026-08-25** — all work on branch `feat/nextjs-foundation`. Phases 0–2 complete, reviewed (two-stage: spec + code quality), and passing (24 tests, build/typecheck green).
+
+| Phase | Name | Outcome | Status |
 |---|---|---|---|
-| 0 | Foundation: repo + Next.js migration | Next.js app runs, existing UI ported, public/admin route split, git initialised | ✅ Yes |
-| 1 | Database + auth boundary | Postgres+Prisma live, schema migrated, admin login works, middleware guards `/admin` | ✅ Yes |
-| 2 | Pricing engine + calculator API | Server-side landed cost + markup hierarchy + public range; calculator hits real API | ⏭ Own plan |
-| 3 | Quote flow persistence | Multi-step quote writes Lead/Company/QuoteRequest, file upload to MinIO, email notify | ⏭ Own plan |
-| 4 | CRM + quotes + activity | Leads list/detail, correct pipeline, notes, quote revisions, quote history | ⏭ Own plan |
-| 5 | Pricing/landed-cost/logistics admin + Excel | Manual editors + download→edit→validate→preview→confirm + add-new import | ⏭ Own plan |
-| 6 | i18n + legal/consent | Real EN/DE/FR/IT/ES catalogs, language selector, privacy/cookie/terms, cookie consent | ⏭ Own plan |
-| 7 | Analytics + hardening | Dashboard KPIs/analytics from DB, rate limiting, security review, Docker deploy to VPS | ⏭ Own plan |
+| 0 | Foundation: repo + Next.js migration | Next.js app runs, existing UI ported, public/admin route split, git initialised | ✅ **DONE** (commits 98cf00a→e8fb9f6, +cc4bf1a fixes) |
+| 1 | Database + auth boundary | Postgres+Prisma live, schema migrated, admin login works, middleware guards `/admin` | ✅ **DONE** (5391d4a, +1ac0b14 indexes/hardening) |
+| 2 | Pricing engine + calculator API | Server-side landed cost + markup hierarchy + public range; calculator hits real API | ✅ **DONE** (cabd7fb→e1631ad, +a8d03a9 seed) — plan: `2026-08-25-opsvale-phase2-pricing-calculator.md` |
+| 3 | Quote flow persistence | Multi-step quote writes Lead/Company/QuoteRequest, file upload to MinIO, email notify | ⏭ TODO — own plan |
+| 4 | CRM + quotes + activity | Leads list/detail, correct pipeline, notes, quote revisions, quote history | ⏭ TODO — own plan |
+| 5 | Pricing/landed-cost/logistics admin + Excel | Manual editors + download→edit→validate→preview→confirm + add-new import | ⏭ TODO — own plan |
+| 6 | i18n + legal/consent | Real EN/DE/FR/IT/ES catalogs, language selector, privacy/cookie/terms, cookie consent | ⏭ TODO — own plan |
+| 7 | Analytics + hardening | Dashboard KPIs/analytics from DB, rate limiting, security review, Docker deploy to VPS | ⏭ TODO — own plan |
 
 Each ⏭ phase gets a `docs/superpowers/plans/<date>-opsvale-phaseN-<name>.md` written just before execution.
 
