@@ -1,0 +1,68 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { calculatorInputSchema } from '@/lib/validation/calculator';
+import { resolvePublicRange } from '@/lib/pricing/publicRange';
+import { computeSavings } from '@/lib/calculator/savings';
+import { buildCalculatorResponse } from '@/lib/calculator/buildCalculatorResponse';
+
+export async function POST(req: Request) {
+  const parsed = calculatorInputSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  const inp = parsed.data;
+  const material = inp.material === 'white' ? 'WHITE' : 'KRAFT';
+  const print = inp.print === 'custom' ? 'PRINTED' : 'PLAIN';
+
+  const country = await prisma.country.findUnique({ where: { code: inp.countryCode } });
+  const box = await prisma.boxConfig.findUnique({
+    where: { sizeLabel_material_print: { sizeLabel: inp.boxSize, material, print } },
+  });
+  if (!country || !box) return NextResponse.json({ available: false, reason: 'unsupported_combination' });
+
+  const [rules, landed, approved] = await Promise.all([
+    prisma.pricingRule.findMany({
+      where: {
+        active: true,
+        OR: [{ scope: 'GLOBAL' }, { countryId: country.id }, { boxConfigId: box.id }],
+      },
+    }),
+    prisma.landedCost.findMany({ where: { active: true, boxConfigId: box.id, countryId: country.id } }),
+    prisma.publicPriceRange.findUnique({
+      where: { boxConfigId_countryId: { boxConfigId: box.id, countryId: country.id } },
+    }),
+  ]);
+
+  const range = resolvePublicRange({
+    boxConfigId: box.id,
+    countryId: country.id,
+    monthlyVolume: inp.monthlyVolume,
+    approvedRange:
+      approved && approved.active
+        ? { minEur: Number(approved.minEur), maxEur: Number(approved.maxEur) }
+        : null,
+    markupRules: rules.map((r) => ({
+      scope: r.scope,
+      countryId: r.countryId,
+      boxConfigId: r.boxConfigId,
+      markupMin: Number(r.markupMin),
+      markupMax: Number(r.markupMax),
+      active: r.active,
+    })),
+    landedCosts: landed.map((l) => ({
+      boxConfigId: l.boxConfigId,
+      countryId: l.countryId,
+      qtyTierMin: l.qtyTierMin,
+      qtyTierMax: l.qtyTierMax,
+      costEur: Number(l.costEur),
+      active: l.active,
+    })),
+  });
+  if (!range.available) return NextResponse.json({ available: false, reason: 'no_estimate' });
+
+  const savings = computeSavings({
+    currentPrice: inp.currentPrice,
+    monthlyVolume: inp.monthlyVolume,
+    priceRange: { minEur: range.minEur, maxEur: range.maxEur },
+  });
+
+  return NextResponse.json(buildCalculatorResponse(range, savings));
+}
