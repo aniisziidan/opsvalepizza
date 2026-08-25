@@ -30,12 +30,19 @@ async function main() {
     },
   });
 
+  // Codes MUST match the strings the calculator UI's <select> sends
+  // (components/SavingsCalculatorPage.tsx). Note: the UI uses 'UK' (not 'GB')
+  // for the United Kingdom, so we seed 'UK' to avoid a code mismatch.
   const countries: [string, string][] = [
-    ['DE', 'Germany'],
-    ['FR', 'France'],
     ['IT', 'Italy'],
+    ['FR', 'France'],
+    ['DE', 'Germany'],
     ['ES', 'Spain'],
     ['NL', 'Netherlands'],
+    ['UK', 'United Kingdom'],
+    ['BE', 'Belgium'],
+    ['PL', 'Poland'],
+    ['AT', 'Austria'],
   ];
   for (const [code, name] of countries) {
     await prisma.country.upsert({ where: { code }, update: {}, create: { code, name } });
