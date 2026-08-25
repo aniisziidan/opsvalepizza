@@ -1,0 +1,6 @@
+{
+  "name": "OpsVale - Wholesale Pizza Box Sourcing & Operations",
+  "description": "Enterprise wholesale pizza box sourcing platform and operations portal for European pizza chains.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

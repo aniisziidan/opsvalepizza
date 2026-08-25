@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OpsVale - Wholesale Pizza Box Sourcing</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800;900&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "inverse-surface": "#213145",
+                        "secondary-fixed-dim": "#e3c290",
+                        "surface-dim": "#cbdbf5",
+                        "primary-container": "#1b2b48",
+                        "primary": "#041632",
+                        "outline-variant": "#c5c6ce",
+                        "on-secondary-fixed": "#281900",
+                        "outline": "#75777e",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f8f9ff",
+                        "on-tertiary-container": "#e77114",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#ffdeac",
+                        "on-background": "#0b1c30",
+                        "primary-fixed": "#d7e2ff",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#d3e4fe",
+                        "primary-fixed-dim": "#b7c7eb",
+                        "tertiary-container": "#4a1f00",
+                        "inverse-primary": "#b7c7eb",
+                        "secondary-container": "#fddba7",
+                        "error": "#ba1a1a",
+                        "surface": "#f8f9ff",
+                        "surface-tint": "#4f5e7e",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "tertiary": "#2b0f00",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb68b",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "secondary": "#735a31",
+                        "on-secondary-container": "#785f35",
+                        "surface-container-low": "#eff4ff",
+                        "surface-container-highest": "#d3e4fe",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#321200",
+                        "on-surface-variant": "#44474d",
+                        "tertiary-fixed": "#ffdbc8",
+                        "on-surface": "#0b1c30",
+                        "surface-container": "#e5eeff",
+                        "on-primary-container": "#8393b5",
+                        "inverse-on-surface": "#eaf1ff",
+                        "background": "#f8f9ff",
+                        "on-primary-fixed": "#091b37",
+                        "on-primary-fixed-variant": "#374765",
+                        "on-secondary-fixed-variant": "#59431c",
+                        "surface-container-high": "#dce9ff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "margin-mobile": "16px",
+                        "gutter": "24px",
+                        "max-width": "1440px",
+                        "margin-desktop": "64px",
+                        "unit": "4px"
+                    },
+                    fontFamily: {
+                        "data-label": ["JetBrains Mono"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"]
+                    },
+                    fontSize: {
+                        "data-label": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Industrial Grid Lines */
+        .industrial-grid {
+            background-image: 
+                linear-gradient(to right, #c5c6ce 1px, transparent 1px),
+                linear-gradient(to bottom, #c5c6ce 1px, transparent 1px);
+            background-size: 48px 48px;
+            background-position: top left;
+        }
+        .industrial-border {
+            border: 1px solid #c5c6ce;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased selection:bg-on-tertiary-container selection:text-white flex flex-col min-h-screen">
+<!-- TopNavBar from Shared Components -->
+<nav class="bg-surface dark:bg-primary-container text-primary dark:text-primary-fixed docked full-width top-0 border-b border-outline-variant dark:border-outline flat no shadows z-50">
+<div class="flex justify-between items-center w-full px-margin-desktop max-w-max-width mx-auto h-20">
+<!-- Brand Logo -->
+<a class="font-headline-lg text-headline-lg font-bold text-primary dark:text-primary-fixed-dim" href="#">
+                OpsVale
+            </a>
+<!-- Navigation Links (Desktop) -->
+<ul class="hidden md:flex items-center gap-8 font-data-label text-data-label">
+<li><a class="text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1 opacity-80 scale-95 transition-all" href="#">Home</a></li>
+<li><a class="text-on-surface-variant dark:text-outline-variant hover:text-primary hover:bg-surface-container-low dark:hover:bg-primary-container transition-colors duration-200 py-2 px-3 rounded-DEFAULT" href="#">Products</a></li>
+<li><a class="text-on-surface-variant dark:text-outline-variant hover:text-primary hover:bg-surface-container-low dark:hover:bg-primary-container transition-colors duration-200 py-2 px-3 rounded-DEFAULT" href="#">How It Works</a></li>
+<li><a class="text-on-surface-variant dark:text-outline-variant hover:text-primary hover:bg-surface-container-low dark:hover:bg-primary-container transition-colors duration-200 py-2 px-3 rounded-DEFAULT" href="#">Savings Calculator</a></li>
+<li><a class="text-on-surface-variant dark:text-outline-variant hover:text-primary hover:bg-surface-container-low dark:hover:bg-primary-container transition-colors duration-200 py-2 px-3 rounded-DEFAULT" href="#">About</a></li>
+</ul>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-6">
+<button class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors flex items-center gap-1 group relative">
+<span class="material-symbols-outlined text-[20px]" data-icon="language">language</span>
+<span class="font-data-label text-data-label uppercase hidden lg:block group-hover:text-primary">EN</span>
+</button>
+<button class="bg-on-tertiary-container text-on-tertiary px-6 py-3 font-data-label text-data-label uppercase tracking-widest hover:bg-tertiary-container transition-colors shadow-[0px_4px_20px_rgba(27,43,72,0.08)]">
+                    Request a Quote
+                </button>
+</div>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col w-full">
+<!-- Hero Section: Split Layout -->
+<section class="w-full border-b border-outline-variant relative overflow-hidden bg-surface-container-low">
+<div class="max-w-max-width mx-auto px-margin-desktop grid grid-cols-1 lg:grid-cols-12 min-h-[70vh]">
+<!-- Left Text Content -->
+<div class="lg:col-span-6 flex flex-col justify-center py-20 lg:pr-16 relative z-10 border-r border-outline-variant">
+<div class="inline-flex items-center gap-2 mb-8 bg-surface-container-high px-3 py-1.5 w-fit border border-outline-variant">
+<span class="w-2 h-2 rounded-full bg-on-tertiary-container animate-pulse"></span>
+<span class="font-data-label text-data-label text-primary uppercase">Wholesale European Supply</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-primary mb-6 leading-tight max-w-xl">
+                        Lower Your Pizza Box Costs Without Compromising Quality.
+                    </h1>
+<p class="font-body-md text-body-md text-on-surface-variant mb-10 max-w-lg leading-relaxed">
+                        Professional wholesale pizza box sourcing for European pizza chains. Specialized in high-volume supply and logistics. Every box accounted for, every order on time.
+                    </p>
+<div class="flex flex-col sm:flex-row items-center gap-4">
+<button class="w-full sm:w-auto bg-on-tertiary-container text-on-tertiary px-8 py-4 font-data-label text-data-label uppercase tracking-widest hover:bg-tertiary-container transition-colors shadow-[0px_4px_20px_rgba(27,43,72,0.08)]">
+                            Check Your Savings
+                        </button>
+<button class="w-full sm:w-auto border-2 border-primary text-primary bg-transparent px-8 py-4 font-data-label text-data-label uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-colors">
+                            Request an Exact Quote
+                        </button>
+</div>
+</div>
+<!-- Right Visual Content -->
+<div class="lg:col-span-6 relative bg-surface-dim h-full min-h-[400px]">
+<div class="absolute inset-0 p-8 flex items-center justify-center">
+<img class="w-full h-full object-cover border border-outline-variant shadow-lg filter contrast-105" data-alt="A highly detailed, professional photograph of neatly stacked, premium Kraft paper pizza boxes in a massive, brightly lit modern industrial warehouse. The lighting is soft but high-key, casting subtle architectural shadows. The aesthetic is extremely clean, hyper-organized, and relies on a palette of slate greys, warm Kraft browns, and deep navy accents, perfectly aligning with a corporate modern industrial UI design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYDsi7xxfMKxwxKzTKtnKg_7mIUfUqRZE0G2muzKj9yVVtQTA2INKmMX-aNzheraaBBxKzsnFoJBiMuyjccsdHfxqN1Xu50nZ88fFMuVjiL3nI4ElqrRlwyUR5aD1tljWxwvdDXV6308NkVv6zlHqQiddamQOcycYr8HN3yzfOOTlByu4NH2Q74DHR777OwapVOPaKlc8rhuhVIxJmWGu9HIAgq9cioZu78lOrIZMTiN-wUyMwnQY70g"/>
+</div>
+<!-- Decorative Overlay Elements -->
+<div class="absolute top-12 right-12 bg-surface/90 backdrop-blur-sm border border-outline-variant p-4 shadow-[0px_4px_20px_rgba(27,43,72,0.08)] flex items-center gap-4">
+<div class="bg-surface-container-high p-2 rounded-DEFAULT">
+<span class="material-symbols-outlined text-on-tertiary-container" data-icon="local_shipping" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+<div>
+<p class="font-data-label text-data-label text-on-surface-variant uppercase">Transit Status</p>
+<p class="font-body-md text-body-md font-semibold text-primary">On Schedule</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 3 Pillars: Fast. Simple. Accurate. -->
+<section class="w-full bg-surface py-20 border-b border-outline-variant">
+<div class="max-w-max-width mx-auto px-margin-desktop">
+<div class="text-center mb-16">
+<h2 class="font-headline-lg text-headline-lg text-primary mb-4">The OpsVale Advantage</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl mx-auto">Engineered for high-volume procurement where reliability is the only metric that matters.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-0 industrial-border bg-surface-container-lowest">
+<!-- Pillar 1 -->
+<div class="p-10 border-b md:border-b-0 md:border-r border-outline-variant hover:bg-surface-container-low transition-colors duration-300">
+<div class="w-12 h-12 bg-primary-container flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-inverse-on-surface" data-icon="bolt">bolt</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-3">Fast.</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Streamlined ordering and rapid dispatch protocols ensure your materials are moving before you even realize you're low.</p>
+</div>
+<!-- Pillar 2 -->
+<div class="p-10 border-b md:border-b-0 md:border-r border-outline-variant hover:bg-surface-container-low transition-colors duration-300">
+<div class="w-12 h-12 bg-primary-container flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-inverse-on-surface" data-icon="check_circle">check_circle</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-3">Simple.</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">No complex catalogs. We focus purely on what works for European pizzerias, standardizing the supply chain.</p>
+</div>
+<!-- Pillar 3 -->
+<div class="p-10 hover:bg-surface-container-low transition-colors duration-300">
+<div class="w-12 h-12 bg-primary-container flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-inverse-on-surface" data-icon="my_location">my_location</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-3">Accurate.</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Precision tracking from factory floor to your back door. Total data visibility into every pallet shipped.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Calculator Entry / Market Focus -->
+<section class="w-full bg-inverse-surface py-24 relative overflow-hidden">
+<!-- Decorative Background Element -->
+<div class="absolute inset-0 opacity-5" style="background-image: repeating-linear-gradient(45deg, #ffffff 25%, transparent 25%, transparent 75%, #ffffff 75%, #ffffff), repeating-linear-gradient(45deg, #ffffff 25%, #f8f9ff 25%, #f8f9ff 75%, #ffffff 75%, #ffffff); background-position: 0 0, 10px 10px; background-size: 20px 20px;"></div>
+<div class="max-w-max-width mx-auto px-margin-desktop grid grid-cols-1 lg:grid-cols-2 gap-16 relative z-10 items-center">
+<!-- Calculator Promo -->
+<div class="bg-primary-container p-12 border border-surface-tint shadow-2xl relative">
+<div class="absolute top-0 right-0 w-16 h-16 bg-on-tertiary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-white" data-icon="calculate">calculate</span>
+</div>
+<span class="font-data-label text-data-label text-secondary-fixed-dim uppercase tracking-widest block mb-4">Cost Analysis</span>
+<h2 class="font-headline-lg text-headline-lg text-on-primary mb-6">Stop Overpaying for Essential Packaging.</h2>
+<p class="font-body-md text-body-md text-on-primary-container mb-8">
+                        Input your current volume and pricing to see exactly how much OpsVale's dedicated logistics network can save your franchise annually.
+                    </p>
+<div class="flex flex-col gap-4 mb-8">
+<div class="flex flex-col">
+<label class="font-data-label text-data-label text-on-primary-container mb-2 uppercase">Monthly Box Volume</label>
+<input class="bg-inverse-surface border border-surface-tint text-on-primary p-4 h-12 focus:ring-2 focus:ring-on-tertiary-container focus:border-transparent outline-none font-data-label placeholder:text-surface-tint" placeholder="e.g., 50,000" type="text"/>
+</div>
+</div>
+<button class="w-full bg-on-tertiary-container text-on-tertiary px-8 py-4 font-data-label text-data-label uppercase tracking-widest hover:bg-tertiary-container transition-colors flex justify-center items-center gap-2">
+                        Calculate Savings <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Market Focus: European Specialization -->
+<div class="flex flex-col justify-center">
+<span class="font-data-label text-data-label text-on-primary-container uppercase tracking-widest block mb-4 border-l-2 border-on-tertiary-container pl-3">Our Footprint</span>
+<h2 class="font-headline-lg text-headline-lg text-on-primary mb-6">Built for the European Market.</h2>
+<p class="font-body-md text-body-md text-on-primary-container mb-10">
+                        We don't try to serve everyone. We specialize strictly in supplying high-grade, food-safe packaging to pizza chains operating across the European continent. Our centralized hubs ensure minimal transit times and tariff-free movement within the EU.
+                    </p>
+<div class="grid grid-cols-2 gap-8">
+<div class="border-t border-surface-tint pt-4">
+<p class="font-headline-xl text-headline-xl text-secondary-fixed-dim">14</p>
+<p class="font-data-label text-data-label text-on-primary-container uppercase mt-2">Logistics Hubs</p>
+</div>
+<div class="border-t border-surface-tint pt-4">
+<p class="font-headline-xl text-headline-xl text-secondary-fixed-dim">48h</p>
+<p class="font-data-label text-data-label text-on-primary-container uppercase mt-2">Max Dispatch Time</p>
+</div>
+<div class="border-t border-surface-tint pt-4">
+<p class="font-headline-xl text-headline-xl text-secondary-fixed-dim">100%</p>
+<p class="font-data-label text-data-label text-on-primary-container uppercase mt-2">FSC Certified</p>
+</div>
+<div class="border-t border-surface-tint pt-4">
+<p class="font-headline-xl text-headline-xl text-secondary-fixed-dim">€0</p>
+<p class="font-data-label text-data-label text-on-primary-container uppercase mt-2">Hidden Fees</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer from Shared Components -->
+<footer class="bg-surface-container-highest dark:bg-primary-container text-on-surface dark:text-on-primary-fixed border-t border-outline-variant dark:border-outline flat no shadows full-width bottom mt-auto">
+<div class="w-full px-margin-desktop py-12 max-w-max-width mx-auto grid grid-cols-1 md:grid-cols-4 gap-gutter font-body-sm text-body-sm">
+<!-- Brand & Copyright -->
+<div class="md:col-span-1 flex flex-col justify-between">
+<div>
+<h4 class="font-headline-lg text-headline-lg font-bold text-primary dark:text-primary-fixed mb-4">OpsVale</h4>
+<p class="text-on-surface-variant dark:text-outline-variant font-data-label text-data-label">
+                        Wholesale Packaging Solutions.
+                    </p>
+</div>
+<div class="mt-8 md:mt-0 text-on-surface-variant dark:text-outline-variant text-xs">
+                    © 2024 OpsVale Packaging Solutions. All rights reserved.
+                </div>
+</div>
+<!-- Links Column 1 -->
+<div class="md:col-span-1 flex flex-col gap-3 font-data-label text-data-label">
+<span class="text-primary font-bold mb-2 uppercase">Legal</span>
+<a class="text-on-surface-variant dark:text-outline-variant hover:underline hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary w-fit" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:underline hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary w-fit" href="#">Cookie Policy</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:underline hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary w-fit" href="#">Terms &amp; Conditions</a>
+</div>
+<!-- Links Column 2 -->
+<div class="md:col-span-1 flex flex-col gap-3 font-data-label text-data-label">
+<span class="text-primary font-bold mb-2 uppercase">Connect</span>
+<a class="text-on-surface-variant dark:text-outline-variant hover:underline hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary w-fit" href="#">Contact Us</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:underline hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary w-fit" href="#">Request a Quote</a>
+</div>
+<!-- Industrial Aesthetic Badge -->
+<div class="md:col-span-1 flex justify-start md:justify-end items-end">
+<div class="border border-outline-variant p-4 bg-surface flex flex-col gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="barcode">qr_code_scanner</span>
+<span class="font-data-label text-data-label text-outline text-[10px]">OPS-VALE-EUR-01</span>
+</div>
+</div>
+</div>
+</footer>
+</body></html>
