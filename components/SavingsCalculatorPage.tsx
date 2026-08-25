@@ -1,12 +1,36 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalculatorState } from '@/lib/types';
 
 interface SavingsCalculatorPageProps {
   initialVolume?: number;
 }
+
+// Local type mirroring the /api/calculator response contract.
+type CalculatorApiResult =
+  | {
+      available: true;
+      priceRange: { minEur: number; maxEur: number };
+      savings: {
+        perBoxMin: number;
+        perBoxMax: number;
+        pctMin: number;
+        pctMax: number;
+        yearlyMin: number;
+        yearlyMax: number;
+        annualVolume: number;
+      };
+    }
+  | {
+      available: false;
+      reason: 'unsupported_combination' | 'no_estimate';
+    };
+
+// Countries the API/pricing data supports as valid 2-letter codes. The UI
+// already stores ISO-style codes; 'OTHER' is a sentinel with no code.
+const SUPPORTED_COUNTRY_CODES = ['DE', 'FR', 'IT', 'ES', 'NL', 'UK', 'BE', 'PL', 'AT'];
 
 export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
   initialVolume = 20000,
@@ -20,55 +44,27 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
   const [monthlyVolume, setMonthlyVolume] = useState<number>(initialVolume);
   const [currentPrice, setCurrentPrice] = useState<number>(0.35);
 
-  const [hasCalculated, setHasCalculated] = useState<boolean>(true);
+  const [hasCalculated, setHasCalculated] = useState<boolean>(false);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const [detailsOpen, setDetailsOpen] = useState<boolean>(true);
+
+  const [result, setResult] = useState<CalculatorApiResult | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<boolean>(false);
+
+  // Track the latest request so out-of-order responses (from rapid input
+  // changes) never overwrite fresher results.
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (initialVolume && initialVolume !== monthlyVolume) {
       setMonthlyVolume(initialVolume);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialVolume]);
-
-  // Pricing formula based on box size, material, print, and order tier
-  const getOpsValeUnitPrice = () => {
-    let base = 0.22;
-    if (boxSize === '28cm') base = 0.19;
-    if (boxSize === '32cm') base = 0.235;
-    if (boxSize === '40cm') base = 0.31;
-
-    // Material adjustment
-    if (material === 'white') base += 0.02;
-
-    // Print adjustment
-    if (print === 'custom') base += 0.015;
-
-    // Volume discount
-    if (monthlyVolume >= 100000) base *= 0.92;
-    else if (monthlyVolume >= 50000) base *= 0.95;
-
-    return Number(base.toFixed(3));
-  };
-
-  const opsValeAvgPrice = getOpsValeUnitPrice();
-  const currentAnnualSpend = currentPrice * monthlyVolume * 12;
-  const newAnnualSpend = opsValeAvgPrice * monthlyVolume * 12;
-  const yearlySavings = Math.max(0, currentAnnualSpend - newAnnualSpend);
-  const savingsPerBox = Math.max(0, currentPrice - opsValeAvgPrice);
-  const priceRangeLower = (opsValeAvgPrice * 0.94).toFixed(2);
-  const priceRangeUpper = (opsValeAvgPrice * 1.06).toFixed(2);
 
   const formatCurrency = (val: number) => {
     return val.toLocaleString('en-EU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
-
-  const handleCalculate = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setIsAnimating(true);
-    setHasCalculated(true);
-    setTimeout(() => {
-      setIsAnimating(false);
-    }, 400);
   };
 
   const currentCalcState: CalculatorState = {
@@ -79,6 +75,98 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
     boxesPerOrder,
     monthlyVolume,
     currentPrice,
+  };
+
+  const fetchEstimate = useCallback(async () => {
+    const reqId = ++requestIdRef.current;
+
+    // 'OTHER' (or any non 2-letter sentinel) cannot be priced — surface the
+    // missing-data path without hitting the API with an invalid code.
+    if (!SUPPORTED_COUNTRY_CODES.includes(country)) {
+      setError(false);
+      setIsLoading(false);
+      setResult({ available: false, reason: 'unsupported_combination' });
+      return;
+    }
+
+    setIsLoading(true);
+    setError(false);
+    setIsAnimating(true);
+
+    try {
+      const res = await fetch('/api/calculator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          countryCode: country,
+          boxSize,
+          material,
+          print,
+          boxesPerOrder,
+          monthlyVolume,
+          currentPrice,
+        }),
+      });
+
+      if (reqId !== requestIdRef.current) return; // stale response, ignore
+
+      if (!res.ok) {
+        setResult(null);
+        setError(true);
+        return;
+      }
+
+      const data = (await res.json()) as CalculatorApiResult;
+      if (reqId !== requestIdRef.current) return;
+      setResult(data);
+    } catch {
+      if (reqId !== requestIdRef.current) return;
+      setResult(null);
+      setError(true);
+    } finally {
+      if (reqId === requestIdRef.current) {
+        setIsLoading(false);
+        setTimeout(() => {
+          if (reqId === requestIdRef.current) setIsAnimating(false);
+        }, 400);
+      }
+    }
+  }, [country, boxSize, material, print, boxesPerOrder, monthlyVolume, currentPrice]);
+
+  const handleCalculate = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setHasCalculated(true);
+    void fetchEstimate();
+  };
+
+  // Auto-recalc after the first calculation, debounced ~400ms.
+  useEffect(() => {
+    if (!hasCalculated) return;
+    const t = setTimeout(() => {
+      void fetchEstimate();
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country, boxSize, material, print, boxesPerOrder, monthlyVolume, currentPrice, hasCalculated]);
+
+  const available = result?.available === true;
+  const unavailable = result?.available === false;
+
+  const yearlyForQuote =
+    result && result.available ? Math.round(result.savings.yearlyMax) : 0;
+
+  const handleRequestQuote = () => {
+    const params = new URLSearchParams({
+      country: currentCalcState.country,
+      boxSize: currentCalcState.boxSize,
+      material: currentCalcState.material,
+      print: currentCalcState.print,
+      monthlyVolume: String(currentCalcState.monthlyVolume),
+      boxesPerOrder: String(currentCalcState.boxesPerOrder),
+      currentPrice: String(currentCalcState.currentPrice),
+      savings: String(yearlyForQuote),
+    });
+    router.push(`/quote?${params.toString()}`);
   };
 
   return (
@@ -340,110 +428,230 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                   <h2 className="font-headline text-xl sm:text-2xl font-semibold text-[#ffdeac]">
                     Savings Analysis
                   </h2>
+                  {isLoading && (
+                    <span
+                      className="ml-auto material-symbols-outlined text-xl text-[#b7c7eb] animate-spin"
+                      aria-label="Calculating"
+                    >
+                      progress_activity
+                    </span>
+                  )}
                 </div>
 
-                <div className="space-y-6 flex-grow">
-                  {/* Primary Savings Metric */}
-                  <div className="bg-[#213145]/70 border border-white/10 rounded-lg p-6">
-                    <span className="font-mono-data text-xs text-[#b7c7eb] uppercase tracking-widest block mb-2 font-semibold">
-                      Estimated Yearly Savings
-                    </span>
-                    <div className={`font-headline text-3xl sm:text-4xl lg:text-5xl font-bold flex items-baseline gap-1 text-white ${
-                      isAnimating ? 'scale-105 text-[#e77114]' : ''
-                    } transition-all`}>
-                      <span className="text-2xl sm:text-3xl text-[#ffdeac] font-normal">€</span>
-                      <span>{hasCalculated ? formatCurrency(yearlySavings) : '--'}</span>
-                    </div>
-
-                    <div className="mt-4 flex items-center gap-2 text-[#dce9ff] bg-white/10 px-3 py-1.5 rounded-full w-fit">
-                      <span className="material-symbols-outlined text-sm text-[#e77114]">arrow_downward</span>
-                      <span className="font-body text-xs sm:text-sm font-medium">
-                        Cost reduction identified ({( (savingsPerBox / currentPrice) * 100 ).toFixed(1)}%)
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Per Box Breakdown */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="border border-[#c5c6ce]/30 rounded-lg p-4 bg-white/5">
-                      <span className="font-mono-data text-[11px] text-[#cbdbf5] uppercase block mb-1 font-semibold">
-                        Savings Per Box
-                      </span>
-                      <div className="font-headline text-xl sm:text-2xl text-[#fddba7] font-semibold">
-                        <span>€</span>{hasCalculated ? formatCurrency(savingsPerBox) : '--'}
-                      </div>
-                    </div>
-
-                    <div className="border border-[#c5c6ce]/30 rounded-lg p-4 bg-white/5">
-                      <span className="font-mono-data text-[11px] text-[#cbdbf5] uppercase block mb-1 font-semibold">
-                        OpsVale Price Range
-                      </span>
-                      <div className="font-headline text-xl sm:text-2xl text-white font-semibold">
-                        <span>€</span>{priceRangeLower} - {priceRangeUpper}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Expandable Details */}
-                  <div className="border border-[#c5c6ce]/20 rounded-lg overflow-hidden bg-[#1b2b48]/50">
+                {/* Error / retry state */}
+                {error ? (
+                  <div className="flex-grow flex flex-col items-center justify-center text-center py-8 gap-4">
+                    <span className="material-symbols-outlined text-4xl text-[#ffdeac]">error</span>
+                    <p className="font-body text-sm text-[#dce9ff] max-w-xs">
+                      Something went wrong while calculating your estimate. Please try again.
+                    </p>
                     <button
                       type="button"
-                      onClick={() => setDetailsOpen(!detailsOpen)}
-                      className="w-full cursor-pointer p-4 font-mono-data text-xs text-[#f8f9ff] flex justify-between items-center hover:bg-[#1b2b48] transition-colors uppercase font-semibold"
+                      onClick={() => void fetchEstimate()}
+                      className="bg-white/10 hover:bg-white/20 border border-white/20 text-white py-2.5 px-6 rounded-lg font-mono-data text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-2"
                     >
-                      Detailed Volume Breakdown
-                      <span className={`material-symbols-outlined transition-transform duration-200 ${
-                        detailsOpen ? 'rotate-180' : ''
-                      }`}>
-                        expand_more
-                      </span>
+                      <span className="material-symbols-outlined text-base">refresh</span>
+                      Retry
                     </button>
+                  </div>
+                ) : unavailable ? (
+                  /* Missing-data path (spec §10) */
+                  <div className="flex-grow flex flex-col">
+                    <div className="bg-[#213145]/70 border border-white/10 rounded-lg p-6 flex flex-col items-start gap-4">
+                      <span className="material-symbols-outlined text-3xl text-[#ffdeac]">
+                        request_quote
+                      </span>
+                      <p className="font-body text-base text-[#dce9ff] leading-relaxed">
+                        We don&apos;t yet have an instant estimate for this exact requirement.
+                        Request an exact quote and we&apos;ll review your requirements within 24
+                        business hours.
+                      </p>
+                    </div>
 
-                    {detailsOpen && (
-                      <div className="p-4 border-t border-white/10 space-y-3 font-body text-sm text-[#dce9ff] bg-[#213145]/40">
-                        <div className="flex justify-between py-1 border-b border-white/10">
-                          <span>Current Annual Spend:</span>
-                          <span className="font-semibold text-white">€{formatCurrency(currentAnnualSpend)}</span>
+                    <div className="mt-8 pt-6 border-t border-white/20 space-y-4 mt-auto">
+                      <button
+                        type="button"
+                        onClick={handleRequestQuote}
+                        className="w-full bg-[#ffdeac] text-[#281900] py-3.5 px-6 rounded-lg font-mono-data text-xs uppercase tracking-widest hover:bg-[#fddba7] transition-colors shadow-md flex items-center justify-center gap-2 font-bold cursor-pointer"
+                      >
+                        Request an Exact Quote
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                      </button>
+                      <p className="text-[11px] text-[#cbdbf5]/70 text-center leading-tight">
+                        Disclaimer: Estimated savings are based on information provided and standard OpsVale pricing tiers for similar volumes and specifications. Actual quotes may vary based on final logistics routing and precise raw material costs at time of order.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-6 flex-grow">
+                      {/* Primary Savings Metric */}
+                      <div className="bg-[#213145]/70 border border-white/10 rounded-lg p-6">
+                        <span className="font-mono-data text-xs text-[#b7c7eb] uppercase tracking-widest block mb-2 font-semibold">
+                          Estimated Yearly Savings ⭐
+                        </span>
+                        <div className={`font-headline text-3xl sm:text-4xl lg:text-5xl font-bold flex items-baseline gap-1 text-white ${
+                          isAnimating ? 'scale-105 text-[#e77114]' : ''
+                        } transition-all`}>
+                          <span className="text-2xl sm:text-3xl text-[#ffdeac] font-normal">€</span>
+                          <span>
+                            {available
+                              ? `${formatCurrency(result.savings.yearlyMin)} – ${formatCurrency(result.savings.yearlyMax)}`
+                              : '--'}
+                          </span>
                         </div>
-                        <div className="flex justify-between py-1 border-b border-white/10">
-                          <span>Estimated OpsVale Spend:</span>
-                          <span className="font-semibold text-[#e3c290]">€{formatCurrency(newAnnualSpend)}</span>
-                        </div>
-                        <div className="flex justify-between py-1 text-xs text-[#b7c7eb] pt-2">
-                          <span>*Based on average OpsVale unit price of €{opsValeAvgPrice.toFixed(3)}</span>
+
+                        <div className="mt-4 flex items-center gap-2 text-[#dce9ff] bg-white/10 px-3 py-1.5 rounded-full w-fit">
+                          <span className="material-symbols-outlined text-sm text-[#e77114]">arrow_downward</span>
+                          <span className="font-body text-xs sm:text-sm font-medium">
+                            {available
+                              ? `Cost reduction identified (${result.savings.pctMin.toFixed(1)}%–${result.savings.pctMax.toFixed(1)}%)`
+                              : 'Cost reduction identified'}
+                          </span>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Bottom CTA */}
-                <div className="mt-8 pt-6 border-t border-white/20 space-y-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const params = new URLSearchParams({
-                        country: currentCalcState.country,
-                        boxSize: currentCalcState.boxSize,
-                        material: currentCalcState.material,
-                        print: currentCalcState.print,
-                        monthlyVolume: String(currentCalcState.monthlyVolume),
-                        boxesPerOrder: String(currentCalcState.boxesPerOrder),
-                        currentPrice: String(currentCalcState.currentPrice),
-                        savings: String(Math.round(yearlySavings)),
-                      });
-                      router.push(`/quote?${params.toString()}`);
-                    }}
-                    className="w-full bg-[#ffdeac] text-[#281900] py-3.5 px-6 rounded-lg font-mono-data text-xs uppercase tracking-widest hover:bg-[#fddba7] transition-colors shadow-md flex items-center justify-center gap-2 font-bold cursor-pointer"
-                  >
-                    Request an Exact Quote
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </button>
+                      {/* Per Box Breakdown */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="border border-[#c5c6ce]/30 rounded-lg p-4 bg-white/5">
+                          <span className="font-mono-data text-[11px] text-[#cbdbf5] uppercase block mb-1 font-semibold">
+                            Savings Per Box ⭐
+                          </span>
+                          <div className="font-headline text-xl sm:text-2xl text-[#fddba7] font-semibold">
+                            {available ? (
+                              <>
+                                <span>€</span>
+                                {formatCurrency(result.savings.perBoxMin)}
+                                {' – '}
+                                <span>€</span>
+                                {formatCurrency(result.savings.perBoxMax)}
+                              </>
+                            ) : (
+                              <>
+                                <span>€</span>--
+                              </>
+                            )}
+                          </div>
+                        </div>
 
-                  <p className="text-[11px] text-[#cbdbf5]/70 text-center leading-tight">
-                    Disclaimer: Estimated savings are based on information provided and standard OpsVale pricing tiers for similar volumes and specifications. Actual quotes may vary based on final logistics routing and precise raw material costs at time of order.
-                  </p>
-                </div>
+                        <div className="border border-[#c5c6ce]/30 rounded-lg p-4 bg-white/5">
+                          <span className="font-mono-data text-[11px] text-[#cbdbf5] uppercase block mb-1 font-semibold">
+                            OpsVale Price Range
+                          </span>
+                          <div className="font-headline text-xl sm:text-2xl text-white font-semibold">
+                            {available ? (
+                              <>
+                                <span>€</span>
+                                {result.priceRange.minEur.toFixed(2)} – €
+                                {result.priceRange.maxEur.toFixed(2)}
+                              </>
+                            ) : (
+                              <>
+                                <span>€</span>-- - --
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expandable Details */}
+                      <div className="border border-[#c5c6ce]/20 rounded-lg overflow-hidden bg-[#1b2b48]/50">
+                        <button
+                          type="button"
+                          onClick={() => setDetailsOpen(!detailsOpen)}
+                          className="w-full cursor-pointer p-4 font-mono-data text-xs text-[#f8f9ff] flex justify-between items-center hover:bg-[#1b2b48] transition-colors uppercase font-semibold"
+                        >
+                          Detailed Volume Breakdown
+                          <span className={`material-symbols-outlined transition-transform duration-200 ${
+                            detailsOpen ? 'rotate-180' : ''
+                          }`}>
+                            expand_more
+                          </span>
+                        </button>
+
+                        {detailsOpen && (
+                          <div className="p-4 border-t border-white/10 space-y-3 font-body text-sm text-[#dce9ff] bg-[#213145]/40">
+                            <div className="flex justify-between py-1 border-b border-white/10">
+                              <span>Current Price / Box:</span>
+                              <span className="font-semibold text-white">€{formatCurrency(currentPrice)}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-white/10">
+                              <span>OpsVale Price Range:</span>
+                              <span className="font-semibold text-[#e3c290]">
+                                {available
+                                  ? `€${result.priceRange.minEur.toFixed(2)} – €${result.priceRange.maxEur.toFixed(2)}`
+                                  : '--'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-white/10">
+                              <span>Savings / Box:</span>
+                              <span className="font-semibold text-white">
+                                {available
+                                  ? `€${formatCurrency(result.savings.perBoxMin)} – €${formatCurrency(result.savings.perBoxMax)}`
+                                  : '--'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-white/10">
+                              <span>Savings %:</span>
+                              <span className="font-semibold text-white">
+                                {available
+                                  ? `${result.savings.pctMin.toFixed(1)}% – ${result.savings.pctMax.toFixed(1)}%`
+                                  : '--'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-white/10">
+                              <span>Monthly Volume:</span>
+                              <span className="font-semibold text-white">{monthlyVolume.toLocaleString('en-EU')}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-white/10">
+                              <span>Annual Volume:</span>
+                              <span className="font-semibold text-white">
+                                {available
+                                  ? result.savings.annualVolume.toLocaleString('en-EU')
+                                  : '--'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-white/10">
+                              <span>Monthly Savings:</span>
+                              <span className="font-semibold text-white">
+                                {available
+                                  ? `€${formatCurrency(result.savings.yearlyMin / 12)} – €${formatCurrency(result.savings.yearlyMax / 12)}`
+                                  : '--'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-1">
+                              <span>Yearly Savings:</span>
+                              <span className="font-semibold text-[#e3c290]">
+                                {available
+                                  ? `€${formatCurrency(result.savings.yearlyMin)} – €${formatCurrency(result.savings.yearlyMax)}`
+                                  : '--'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-1 text-xs text-[#b7c7eb] pt-2">
+                              <span>*Assumes 12 orders/year at the specified monthly volume. Savings shown as a min–max range across the OpsVale price band.</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bottom CTA */}
+                    <div className="mt-8 pt-6 border-t border-white/20 space-y-4">
+                      <button
+                        type="button"
+                        onClick={handleRequestQuote}
+                        className="w-full bg-[#ffdeac] text-[#281900] py-3.5 px-6 rounded-lg font-mono-data text-xs uppercase tracking-widest hover:bg-[#fddba7] transition-colors shadow-md flex items-center justify-center gap-2 font-bold cursor-pointer"
+                      >
+                        Request an Exact Quote
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                      </button>
+
+                      <p className="text-[11px] text-[#cbdbf5]/70 text-center leading-tight">
+                        Disclaimer: Estimated savings are based on information provided and standard OpsVale pricing tiers for similar volumes and specifications. Actual quotes may vary based on final logistics routing and precise raw material costs at time of order.
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
