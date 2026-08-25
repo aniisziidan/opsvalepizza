@@ -40,6 +40,7 @@ model City {
   country   Country @relation(fields: [countryId], references: [id])
   name      String
   active    Boolean @default(true)
+  @@index([countryId])
 }
 
 model BoxConfig {
@@ -76,6 +77,8 @@ model PricingRule {
   markupMax   Decimal  @db.Decimal(4,3)
   effectiveFrom DateTime @default(now())
   active      Boolean  @default(true)
+  @@index([countryId])
+  @@index([boxConfigId])
 }
 enum RuleScope {
   GLOBAL
@@ -95,6 +98,8 @@ model LandedCost {
   source      CostSource
   effectiveFrom DateTime @default(now())
   active      Boolean  @default(true)
+  @@index([countryId])
+  @@index([boxConfigId])
 }
 enum CostSource {
   MANUAL
@@ -110,6 +115,7 @@ model PublicPriceRange {
   isManualOverride Boolean @default(false)
   active      Boolean  @default(true)
   @@unique([boxConfigId, countryId])
+  @@index([countryId])
 }
 
 model LogisticsCost {
@@ -123,6 +129,7 @@ model LogisticsCost {
   inlandEur  Decimal? @db.Decimal(10,4)
   otherEur   Decimal? @db.Decimal(10,4)
   active     Boolean @default(true)
+  @@index([countryId])
 }
 
 model Company {
@@ -142,6 +149,7 @@ model Contact {
   phone     String?
   jobTitle  String?
   leads     Lead[]
+  @@index([companyId])
 }
 
 model Lead {
@@ -160,6 +168,9 @@ model Lead {
   quotes      Quote[]
   activities  LeadActivity[]
   files       StoredFile[]
+  @@index([status])
+  @@index([companyId])
+  @@index([contactId])
 }
 enum LeadStatus {
   NEW
@@ -217,6 +228,7 @@ model Quote {
   status      QuoteStatus @default(DRAFT)
   createdAt   DateTime @default(now())
   @@unique([leadId, revision])
+  @@index([leadId])
 }
 enum QuoteStatus {
   DRAFT
@@ -235,6 +247,8 @@ model LeadActivity {
   type        ActivityType
   content     String
   createdAt   DateTime @default(now())
+  @@index([leadId])
+  @@index([authorId])
 }
 enum ActivityType {
   NOTE
@@ -256,4 +270,5 @@ model StoredFile {
   mimeType   String
   sizeBytes  Int
   createdAt  DateTime @default(now())
+  @@index([leadId])
 }
