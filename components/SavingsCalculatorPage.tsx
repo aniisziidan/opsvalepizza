@@ -428,6 +428,8 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                         material: currentCalcState.material,
                         print: currentCalcState.print,
                         monthlyVolume: String(currentCalcState.monthlyVolume),
+                        boxesPerOrder: String(currentCalcState.boxesPerOrder),
+                        currentPrice: String(currentCalcState.currentPrice),
                         savings: String(Math.round(yearlySavings)),
                       });
                       router.push(`/quote?${params.toString()}`);
