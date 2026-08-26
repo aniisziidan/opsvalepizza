@@ -17,6 +17,7 @@ model AdminUser {
   createdAt     DateTime @default(now())
   activities    LeadActivity[]
 }
+
 enum Role {
   SUPER_ADMIN
   SALES
@@ -25,37 +26,41 @@ enum Role {
 }
 
 model Country {
-  id        String  @id @default(cuid())
-  code      String  @unique
-  name      String
-  active    Boolean @default(true)
-  cities    City[]
-  landedCosts LandedCost[]
-  pricingRules PricingRule[]
+  id             String          @id @default(cuid())
+  code           String          @unique
+  name           String
+  active         Boolean         @default(true)
+  cities         City[]
+  landedCosts    LandedCost[]
+  pricingRules   PricingRule[]
   logisticsCosts LogisticsCost[]
 }
+
 model City {
   id        String  @id @default(cuid())
   countryId String
   country   Country @relation(fields: [countryId], references: [id])
   name      String
   active    Boolean @default(true)
+
   @@index([countryId])
 }
 
 model BoxConfig {
-  id         String  @id @default(cuid())
-  sizeLabel  String
-  lengthMm   Int?
-  widthMm    Int?
-  heightMm   Int?
-  material   Material
-  print      PrintType
-  active     Boolean @default(true)
-  landedCosts LandedCost[]
+  id           String        @id @default(cuid())
+  sizeLabel    String
+  lengthMm     Int?
+  widthMm      Int?
+  heightMm     Int?
+  material     Material
+  print        PrintType
+  active       Boolean       @default(true)
+  landedCosts  LandedCost[]
   pricingRules PricingRule[]
+
   @@unique([sizeLabel, material, print])
 }
+
 enum Material {
   KRAFT
   WHITE
@@ -67,19 +72,21 @@ enum PrintType {
 }
 
 model PricingRule {
-  id          String   @id @default(cuid())
-  scope       RuleScope
-  countryId   String?
-  country     Country? @relation(fields: [countryId], references: [id])
-  boxConfigId String?
-  boxConfig   BoxConfig? @relation(fields: [boxConfigId], references: [id])
-  markupMin   Decimal  @db.Decimal(4,3)
-  markupMax   Decimal  @db.Decimal(4,3)
-  effectiveFrom DateTime @default(now())
-  active      Boolean  @default(true)
+  id            String    @id @default(cuid())
+  scope         RuleScope
+  countryId     String?
+  country       Country?  @relation(fields: [countryId], references: [id])
+  boxConfigId   String?
+  boxConfig     BoxConfig? @relation(fields: [boxConfigId], references: [id])
+  markupMin     Decimal   @db.Decimal(4, 3)
+  markupMax     Decimal   @db.Decimal(4, 3)
+  effectiveFrom DateTime  @default(now())
+  active        Boolean   @default(true)
+
   @@index([countryId])
   @@index([boxConfigId])
 }
+
 enum RuleScope {
   GLOBAL
   COUNTRY
@@ -87,91 +94,134 @@ enum RuleScope {
 }
 
 model LandedCost {
-  id          String   @id @default(cuid())
-  boxConfigId String
-  boxConfig   BoxConfig @relation(fields: [boxConfigId], references: [id])
-  countryId   String
-  country     Country  @relation(fields: [countryId], references: [id])
-  qtyTierMin  Int
-  qtyTierMax  Int?
-  costEur     Decimal  @db.Decimal(10,4)
-  source      CostSource
-  effectiveFrom DateTime @default(now())
-  active      Boolean  @default(true)
+  id            String     @id @default(cuid())
+  boxConfigId   String
+  boxConfig     BoxConfig  @relation(fields: [boxConfigId], references: [id])
+  countryId     String
+  country       Country    @relation(fields: [countryId], references: [id])
+  qtyTierMin    Int
+  qtyTierMax    Int?
+  costEur       Decimal    @db.Decimal(10, 4)
+  source        CostSource
+  effectiveFrom DateTime   @default(now())
+  active        Boolean    @default(true)
+
   @@index([countryId])
   @@index([boxConfigId])
 }
+
 enum CostSource {
   MANUAL
   DYNAMIC
 }
 
 model PublicPriceRange {
-  id          String   @id @default(cuid())
-  boxConfigId String
-  countryId   String
-  minEur      Decimal  @db.Decimal(10,4)
-  maxEur      Decimal  @db.Decimal(10,4)
-  isManualOverride Boolean @default(false)
-  active      Boolean  @default(true)
+  id               String   @id @default(cuid())
+  boxConfigId      String
+  countryId        String
+  minEur           Decimal  @db.Decimal(10, 4)
+  maxEur           Decimal  @db.Decimal(10, 4)
+  isManualOverride Boolean  @default(false)
+  active           Boolean  @default(true)
+
   @@unique([boxConfigId, countryId])
   @@index([countryId])
 }
 
 model LogisticsCost {
-  id         String  @id @default(cuid())
+  id         String   @id @default(cuid())
   countryId  String
-  country    Country @relation(fields: [countryId], references: [id])
+  country    Country  @relation(fields: [countryId], references: [id])
   route      String?
   port       String?
   shipMethod String?
-  freightEur Decimal? @db.Decimal(10,4)
-  inlandEur  Decimal? @db.Decimal(10,4)
-  otherEur   Decimal? @db.Decimal(10,4)
-  active     Boolean @default(true)
+  freightEur Decimal? @db.Decimal(10, 4)
+  inlandEur  Decimal? @db.Decimal(10, 4)
+  otherEur   Decimal? @db.Decimal(10, 4)
+  active     Boolean  @default(true)
+
   @@index([countryId])
 }
 
 model Company {
-  id          String @id @default(cuid())
-  name        String
-  website     String?
-  branchCount Int?
-  contacts    Contact[]
-  leads       Lead[]
+  id                      String    @id @default(cuid())
+  name                    String
+  normalizedName          String    @default("")
+  website                 String?
+  normalizedWebsiteDomain String?
+  countryCode             String?
+  branchCount             Int?
+  branchRange             String?
+  branchCountMin          Int?
+  branchCountMax          Int?
+  contacts                Contact[]
+  leads                   Lead[]
+
+  @@index([normalizedWebsiteDomain])
+  @@index([normalizedName, countryCode])
 }
+
 model Contact {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   companyId String
-  company   Company @relation(fields: [companyId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id])
   name      String
   email     String
   phone     String?
   jobTitle  String?
   leads     Lead[]
+
   @@index([companyId])
 }
 
+model LeadSequence {
+  year          Int @id
+  currentNumber Int @default(0)
+}
+
+model TemporaryUpload {
+  id         String       @id @default(cuid())
+  token      String       @unique @default(uuid())
+  storageKey String       @unique
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  status     UploadStatus @default(TEMPORARY)
+  expiresAt  DateTime
+  createdAt  DateTime     @default(now())
+
+  @@index([status, expiresAt])
+}
+
+enum UploadStatus {
+  TEMPORARY
+  ATTACHED
+  EXPIRED
+}
+
 model Lead {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id])
-  contactId   String
-  contact     Contact  @relation(fields: [contactId], references: [id])
-  status      LeadStatus @default(NEW)
-  source      String   @default("calculator")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  calcData    CalculatorSnapshot?
-  quoteRequest QuoteRequest?
-  quotes      Quote[]
-  activities  LeadActivity[]
-  files       StoredFile[]
+  id             String              @id @default(cuid())
+  code           String              @unique
+  idempotencyKey String?             @unique
+  companyId      String
+  company        Company             @relation(fields: [companyId], references: [id])
+  contactId      String
+  contact        Contact             @relation(fields: [contactId], references: [id])
+  status         LeadStatus          @default(NEW)
+  source         String              @default("quote")
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  calcData       CalculatorSnapshot?
+  quoteRequest   QuoteRequest?
+  quotes         Quote[]
+  activities     LeadActivity[]
+  files          StoredFile[]
+
   @@index([status])
   @@index([companyId])
   @@index([contactId])
 }
+
 enum LeadStatus {
   NEW
   REVIEWING
@@ -184,52 +234,76 @@ enum LeadStatus {
 }
 
 model CalculatorSnapshot {
-  id            String  @id @default(cuid())
-  leadId        String  @unique
-  lead          Lead    @relation(fields: [leadId], references: [id])
-  countryCode   String
-  boxSize       String
-  material      Material
-  print         PrintType
-  boxesPerOrder Int
-  monthlyVolume Int
-  currentPrice  Decimal @db.Decimal(10,4)
-  estMinEur     Decimal @db.Decimal(10,4)
-  estMaxEur     Decimal @db.Decimal(10,4)
-  estYearlySavings Decimal @db.Decimal(12,2)
-  createdAt     DateTime @default(now())
+  id                  String   @id @default(cuid())
+  leadId              String   @unique
+  lead                Lead     @relation(fields: [leadId], references: [id])
+  countryCode         String
+  boxSize             String
+  material            Material
+  print               PrintType
+  boxesPerOrder       Int
+  monthlyVolume       Int
+  currentPrice        Decimal  @db.Decimal(10, 4)
+  landedCostEur       Decimal? @db.Decimal(10, 4)
+  markupMin           Decimal? @db.Decimal(4, 3)
+  markupMax           Decimal? @db.Decimal(4, 3)
+  estMinEur           Decimal  @db.Decimal(10, 4)
+  estMaxEur           Decimal  @db.Decimal(10, 4)
+  estYearlySavings    Decimal  @db.Decimal(12, 2)
+  estYearlySavingsMin Decimal? @db.Decimal(12, 2)
+  estYearlySavingsMax Decimal? @db.Decimal(12, 2)
+  landedCostId        String?
+  markupRuleId        String?
+  publicPriceRangeId  String?
+  pricingVersion      String?
+  createdAt           DateTime @default(now())
+}
+
+enum BoxSpecType {
+  STANDARD
+  CUSTOM
 }
 
 model QuoteRequest {
-  id           String  @id @default(cuid())
-  leadId       String  @unique
-  lead         Lead    @relation(fields: [leadId], references: [id])
-  lengthMm     Int
-  widthMm      Int
-  heightMm     Int
-  material     Material
-  print        PrintType
-  qtyPerOrder  Int
-  deliveryCountryCode String
-  deliveryCity String
-  notes        String?
-  submittedAt  DateTime @default(now())
+  id                   String       @id @default(cuid())
+  leadId               String       @unique
+  lead                 Lead         @relation(fields: [leadId], references: [id])
+  boxSpecificationType BoxSpecType  @default(STANDARD)
+  standardBoxSize      String?
+  lengthMm             Int
+  widthMm              Int
+  heightMm             Int
+  material             Material
+  print                PrintType
+  customFlute          String?
+  monthlyVolume        Int          @default(0)
+  qtyPerOrder          Int
+  deliveryCountryCode  String
+  deliveryCity         String
+  deliveryFrequency    String?
+  hasLoadingDock       Boolean      @default(false)
+  deliveryAccessNotes  String?
+  notes                String?
+  submittedAt          DateTime     @default(now())
+  files                StoredFile[]
 }
 
 model Quote {
-  id          String   @id @default(cuid())
-  leadId      String
-  lead        Lead     @relation(fields: [leadId], references: [id])
-  revision    Int
-  unitPriceEur Decimal @db.Decimal(10,4)
-  qty         Int
-  specs       String?
-  notes       String?
-  status      QuoteStatus @default(DRAFT)
-  createdAt   DateTime @default(now())
+  id           String      @id @default(cuid())
+  leadId       String
+  lead         Lead        @relation(fields: [leadId], references: [id])
+  revision     Int
+  unitPriceEur Decimal     @db.Decimal(10, 4)
+  qty          Int
+  specs        String?
+  notes        String?
+  status       QuoteStatus @default(DRAFT)
+  createdAt    DateTime    @default(now())
+
   @@unique([leadId, revision])
   @@index([leadId])
 }
+
 enum QuoteStatus {
   DRAFT
   SENT
@@ -239,17 +313,19 @@ enum QuoteStatus {
 }
 
 model LeadActivity {
-  id          String   @id @default(cuid())
-  leadId      String
-  lead        Lead     @relation(fields: [leadId], references: [id])
-  authorId    String?
-  author      AdminUser? @relation(fields: [authorId], references: [id])
-  type        ActivityType
-  content     String
-  createdAt   DateTime @default(now())
+  id        String       @id @default(cuid())
+  leadId    String
+  lead      Lead         @relation(fields: [leadId], references: [id])
+  authorId  String?
+  author    AdminUser?   @relation(fields: [authorId], references: [id])
+  type      ActivityType
+  content   String
+  createdAt DateTime     @default(now())
+
   @@index([leadId])
   @@index([authorId])
 }
+
 enum ActivityType {
   NOTE
   STATUS_CHANGE
@@ -262,13 +338,17 @@ enum ActivityType {
 }
 
 model StoredFile {
-  id         String  @id @default(cuid())
-  leadId     String
-  lead       Lead    @relation(fields: [leadId], references: [id])
-  storageKey String
-  fileName   String
-  mimeType   String
-  sizeBytes  Int
-  createdAt  DateTime @default(now())
+  id             String        @id @default(cuid())
+  leadId         String
+  lead           Lead          @relation(fields: [leadId], references: [id])
+  quoteRequestId String?
+  quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
+  storageKey     String        @unique
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  createdAt      DateTime      @default(now())
+
   @@index([leadId])
+  @@index([quoteRequestId])
 }
