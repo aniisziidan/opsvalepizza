@@ -1,5 +1,5 @@
-import { HowItWorksPage } from '@/components/HowItWorksPage';
+import { redirect } from 'next/navigation';
 
-export default function HowItWorks() {
-  return <HowItWorksPage />;
+export default function HowItWorksRedirect() {
+  redirect('/en/how-it-works');
 }

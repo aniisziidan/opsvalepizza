@@ -4,14 +4,29 @@ import { calculatorInputSchema } from '@/lib/validation/calculator';
 import { resolvePublicRange } from '@/lib/pricing/publicRange';
 import { computeSavings } from '@/lib/calculator/savings';
 import { buildCalculatorResponse } from '@/lib/calculator/buildCalculatorResponse';
+import {
+  getClientIp,
+  checkRateLimit,
+  createRateLimitResponse,
+  RATE_LIMIT_TIERS,
+} from '@/lib/ratelimit/rateLimiter';
 
 export async function POST(req: Request) {
+  // 1. Rate limiting guard
+  const ip = getClientIp(req);
+  const rateCheck = checkRateLimit(`calc:${ip}`, RATE_LIMIT_TIERS.CALCULATOR);
+  if (!rateCheck.success) {
+    return createRateLimitResponse(rateCheck);
+  }
+
+  // 2. Input validation
   const parsed = calculatorInputSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   const inp = parsed.data;
   const material = inp.material === 'white' ? 'WHITE' : 'KRAFT';
   const print = inp.print === 'custom' ? 'PRINTED' : 'PLAIN';
 
+  // 3. Database lookup
   const country = await prisma.country.findUnique({ where: { code: inp.countryCode } });
   const box = await prisma.boxConfig.findUnique({
     where: { sizeLabel_material_print: { sizeLabel: inp.boxSize, material, print } },
@@ -26,8 +41,8 @@ export async function POST(req: Request) {
       },
     }),
     prisma.landedCost.findMany({ where: { active: true, boxConfigId: box.id, countryId: country.id } }),
-    prisma.publicPriceRange.findUnique({
-      where: { boxConfigId_countryId: { boxConfigId: box.id, countryId: country.id } },
+    prisma.publicPriceRange.findFirst({
+      where: { boxConfigId: box.id, countryId: country.id, active: true },
     }),
   ]);
 

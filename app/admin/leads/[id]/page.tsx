@@ -1,14 +1,16 @@
 import { notFound } from 'next/navigation';
 import { LeadDetailView } from '@/components/admin/LeadDetailView';
-import { INITIAL_LEADS } from '@/lib/mockData';
+import { getLeadDetail } from '@/lib/admin/queries';
 
-export default async function LeadDetail({
+export const dynamic = 'force-dynamic';
+
+export default async function LeadDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const lead = INITIAL_LEADS.find((l) => l.id === id);
+  const lead = await getLeadDetail(id);
 
   if (!lead) {
     notFound();

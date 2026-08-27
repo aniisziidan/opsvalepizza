@@ -1,6 +1,9 @@
 import { AdminLeadsList } from '@/components/admin/AdminLeadsList';
-import { INITIAL_LEADS } from '@/lib/mockData';
+import { getLeadsSummary } from '@/lib/admin/queries';
 
-export default function AdminLeads() {
-  return <AdminLeadsList leads={INITIAL_LEADS} />;
+export const dynamic = 'force-dynamic';
+
+export default async function AdminLeadsPage() {
+  const data = await getLeadsSummary({ page: 1, pageSize: 50 });
+  return <AdminLeadsList initialData={data} />;
 }

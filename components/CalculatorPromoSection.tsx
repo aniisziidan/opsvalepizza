@@ -2,15 +2,17 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n/context';
 
 export const CalculatorPromoSection: React.FC = () => {
+  const { t, locale } = useTranslation();
   const router = useRouter();
   const [quickVolume, setQuickVolume] = useState<string>('50,000');
 
   const handleCalculate = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanNum = parseInt(quickVolume.replace(/[^0-9]/g, ''), 10) || 50000;
-    router.push(`/calculator?volume=${cleanNum}`);
+    router.push(`/${locale}/calculator?volume=${cleanNum}`);
   };
 
   return (
@@ -33,21 +35,21 @@ export const CalculatorPromoSection: React.FC = () => {
           </div>
 
           <span className="font-mono-data text-xs text-[#e3c290] uppercase tracking-widest block mb-4 font-semibold">
-            Cost Analysis
+            {t('calculator.title')}
           </span>
 
           <h2 className="font-headline text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">
-            Stop Overpaying for Essential Packaging.
+            {t('calculator.annualSavingsTitle')}
           </h2>
 
           <p className="font-body text-sm sm:text-base text-[#8393b5] mb-8 leading-relaxed">
-            Input your current volume and pricing to see exactly how much OpsVale's dedicated logistics network can save your franchise annually.
+            {t('calculator.subtitle')}
           </p>
 
           <form onSubmit={handleCalculate} className="space-y-6">
             <div>
               <label className="font-mono-data text-xs text-[#8393b5] mb-2 uppercase block font-semibold">
-                Monthly Box Volume
+                {t('calculator.monthlyVolumeLabel')}
               </label>
               <input
                 type="text"
@@ -62,7 +64,8 @@ export const CalculatorPromoSection: React.FC = () => {
               type="submit"
               className="w-full bg-[#e77114] text-white px-8 py-4 font-mono-data text-xs uppercase tracking-widest hover:bg-[#c25e10] transition-colors flex justify-center items-center gap-2 font-bold cursor-pointer shadow-lg rounded-sm"
             >
-              Calculate Savings <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              {t('calculator.calculateBtn')}{' '}
+              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </button>
           </form>
         </div>
@@ -70,33 +73,41 @@ export const CalculatorPromoSection: React.FC = () => {
         {/* Market Focus: European Specialization */}
         <div className="flex flex-col justify-center">
           <span className="font-mono-data text-xs text-[#8393b5] uppercase tracking-widest block mb-4 border-l-2 border-[#e77114] pl-3 font-semibold">
-            Our Footprint
+            {t('about.networkTitle')}
           </span>
 
           <h2 className="font-headline text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-6">
-            Built for the European Market.
+            {t('about.missionTitle')}
           </h2>
 
           <p className="font-body text-sm sm:text-base text-[#8393b5] mb-10 leading-relaxed">
-            We don't try to serve everyone. We specialize strictly in supplying high-grade, food-safe packaging to pizza chains operating across the European continent. Our centralized hubs ensure minimal transit times and tariff-free movement within the EU.
+            {t('about.missionDesc')}
           </p>
 
           <div className="grid grid-cols-2 gap-6 sm:gap-8">
             <div className="border-t border-[#4f5e7e] pt-4">
               <p className="font-headline text-3xl sm:text-4xl font-bold text-[#e3c290]">14</p>
-              <p className="font-mono-data text-xs text-[#8393b5] uppercase mt-2 font-medium">Logistics Hubs</p>
+              <p className="font-mono-data text-xs text-[#8393b5] uppercase mt-2 font-medium">
+                {t('hero.statHubsLabel')}
+              </p>
             </div>
             <div className="border-t border-[#4f5e7e] pt-4">
-              <p className="font-headline text-3xl sm:text-4xl font-bold text-[#e3c290]">48h</p>
-              <p className="font-mono-data text-xs text-[#8393b5] uppercase mt-2 font-medium">Max Dispatch Time</p>
+              <p className="font-headline text-3xl sm:text-4xl font-bold text-[#e3c290]">24h</p>
+              <p className="font-mono-data text-xs text-[#8393b5] uppercase mt-2 font-medium">
+                {t('hero.statSlaLabel')}
+              </p>
+            </div>
+            <div className="border-t border-[#4f5e7e] pt-4">
+              <p className="font-headline text-3xl sm:text-4xl font-bold text-[#e3c290]">5,000</p>
+              <p className="font-mono-data text-xs text-[#8393b5] uppercase mt-2 font-medium">
+                {t('hero.statMoqLabel')}
+              </p>
             </div>
             <div className="border-t border-[#4f5e7e] pt-4">
               <p className="font-headline text-3xl sm:text-4xl font-bold text-[#e3c290]">100%</p>
-              <p className="font-mono-data text-xs text-[#8393b5] uppercase mt-2 font-medium">FSC Certified</p>
-            </div>
-            <div className="border-t border-[#4f5e7e] pt-4">
-              <p className="font-headline text-3xl sm:text-4xl font-bold text-[#e3c290]">€0</p>
-              <p className="font-mono-data text-xs text-[#8393b5] uppercase mt-2 font-medium">Hidden Fees</p>
+              <p className="font-mono-data text-xs text-[#8393b5] uppercase mt-2 font-medium">
+                EU Food-Grade
+              </p>
             </div>
           </div>
         </div>

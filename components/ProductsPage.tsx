@@ -1,19 +1,24 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-import { PRODUCT_CATALOG } from '@/lib/mockData';
+import { PRODUCT_CATALOG } from '@/lib/catalog';
+import { useTranslation } from '@/lib/i18n/context';
 
 export const ProductsPage: React.FC = () => {
+  const { t, locale } = useTranslation();
+
   return (
     <div className="w-full py-12 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16">
       <div className="mb-12 border-l-4 border-[#e77114] pl-6 py-2">
         <span className="font-mono-data text-xs text-[#735a31] uppercase tracking-widest block mb-1 font-semibold">
-          Commercial Packaging Catalog
+          {t('products.title')}
         </span>
         <h1 className="font-headline text-3xl sm:text-4xl font-bold text-[#041632] mb-3">
-          Heavyweight Corrugated Pizza Packaging
+          {t('products.title')}
         </h1>
         <p className="font-body text-base text-[#44474d] max-w-3xl leading-relaxed">
-          Standardized for European takeaway and delivery fleets. Manufactured with FSC-certified 100% recyclable virgin kraft liners and micro-fluted corrugation for maximum heat retention and zero lid collapse.
+          {t('products.subtitle')} {t('products.materialKraftDesc')}
         </p>
       </div>
 
@@ -47,7 +52,7 @@ export const ProductsPage: React.FC = () => {
                   <span className="font-bold text-[#041632]">{prod.weight}</span>
                 </div>
                 <div>
-                  <span className="text-[#75777e] block">Minimum Order</span>
+                  <span className="text-[#75777e] block">{t('hero.statMoqLabel')}</span>
                   <span className="font-bold text-[#041632]">{prod.moq}</span>
                 </div>
                 <div>
@@ -67,10 +72,10 @@ export const ProductsPage: React.FC = () => {
             </div>
 
             <Link
-              href="/quote"
+              href={`/${locale}/quote`}
               className="w-full bg-[#041632] text-white py-3 rounded-lg font-mono-data text-xs uppercase tracking-wider hover:bg-[#1b2b48] transition-colors cursor-pointer font-bold flex items-center justify-center gap-2"
             >
-              Get Bulk Quote
+              {t('common.requestQuoteCta')}
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </Link>
           </div>
@@ -81,14 +86,14 @@ export const ProductsPage: React.FC = () => {
       <div className="bg-[#1b2b48] text-white rounded-xl p-8 sm:p-12 border border-[#4f5e7e] grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div>
           <span className="material-symbols-outlined text-3xl text-[#e3c290] mb-3">eco</span>
-          <h3 className="font-headline text-lg font-bold mb-2">100% Food-Safe &amp; Recyclable</h3>
+          <h3 className="font-headline text-lg font-bold mb-2">{t('legal.foodContactEuClaim')}</h3>
           <p className="font-body text-xs sm:text-sm text-[#8393b5]">
-            Certified to EC 1935/2004 and FDA direct food contact regulations. Heavy-duty paper fibers degrade naturally without toxic coatings.
+            Certified to EC 1935/2004 direct food contact regulations. Heavy-duty paper fibers degrade naturally without toxic coatings.
           </p>
         </div>
         <div>
           <span className="material-symbols-outlined text-3xl text-[#e3c290] mb-3">palette</span>
-          <h3 className="font-headline text-lg font-bold mb-2">High-Definition Flexo Print</h3>
+          <h3 className="font-headline text-lg font-bold mb-2">{t('calculator.printPrinted')}</h3>
           <p className="font-body text-xs sm:text-sm text-[#8393b5]">
             Up to 4-color precision water-based flexographic printing with odorless food-safe inks that resist steam and condensation smearing.
           </p>

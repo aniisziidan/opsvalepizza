@@ -8,14 +8,17 @@ datasource db {
 }
 
 model AdminUser {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  passwordHash  String
-  name          String
-  role          Role     @default(SUPER_ADMIN)
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  activities    LeadActivity[]
+  id               String            @id @default(cuid())
+  email            String            @unique
+  passwordHash     String
+  name             String
+  role             Role              @default(SUPER_ADMIN)
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  activities       LeadActivity[]
+  pricingAuditLogs PricingAuditLog[]
+  actorAuditLogs   AdminAuditLog[]   @relation("ActorAdminLogs")
+  targetAuditLogs  AdminAuditLog[]   @relation("TargetAdminLogs")
 }
 
 enum Role {
@@ -81,6 +84,7 @@ model PricingRule {
   markupMin     Decimal   @db.Decimal(4, 3)
   markupMax     Decimal   @db.Decimal(4, 3)
   effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
   active        Boolean   @default(true)
 
   @@index([countryId])
@@ -104,6 +108,7 @@ model LandedCost {
   costEur       Decimal    @db.Decimal(10, 4)
   source        CostSource
   effectiveFrom DateTime   @default(now())
+  effectiveTo   DateTime?
   active        Boolean    @default(true)
 
   @@index([countryId])
@@ -116,16 +121,47 @@ enum CostSource {
 }
 
 model PublicPriceRange {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   boxConfigId      String
   countryId        String
-  minEur           Decimal  @db.Decimal(10, 4)
-  maxEur           Decimal  @db.Decimal(10, 4)
-  isManualOverride Boolean  @default(false)
-  active           Boolean  @default(true)
+  minEur           Decimal   @db.Decimal(10, 4)
+  maxEur           Decimal   @db.Decimal(10, 4)
+  isManualOverride Boolean   @default(false)
+  effectiveFrom    DateTime  @default(now())
+  effectiveTo      DateTime?
+  active           Boolean   @default(true)
 
-  @@unique([boxConfigId, countryId])
+  @@index([boxConfigId, countryId, active])
   @@index([countryId])
+}
+
+enum PricingEntityType {
+  LANDED_COST
+  PRICING_RULE
+  PUBLIC_PRICE_RANGE
+}
+
+enum PricingAuditAction {
+  CREATE
+  VERSION_UPDATE
+  TOGGLE_ACTIVE
+  RETIRE
+}
+
+model PricingAuditLog {
+  id         String             @id @default(cuid())
+  authorId   String?
+  author     AdminUser?         @relation(fields: [authorId], references: [id])
+  entityType PricingEntityType
+  entityId   String
+  action     PricingAuditAction
+  oldValues  Json?
+  newValues  Json?
+  createdAt  DateTime           @default(now())
+
+  @@index([entityType, entityId])
+  @@index([authorId])
+  @@index([createdAt])
 }
 
 model LogisticsCost {
@@ -289,27 +325,66 @@ model QuoteRequest {
 }
 
 model Quote {
-  id           String      @id @default(cuid())
-  leadId       String
-  lead         Lead        @relation(fields: [leadId], references: [id])
-  revision     Int
-  unitPriceEur Decimal     @db.Decimal(10, 4)
-  qty          Int
-  specs        String?
-  notes        String?
-  status       QuoteStatus @default(DRAFT)
-  createdAt    DateTime    @default(now())
+  id              String        @id @default(cuid())
+  leadId          String
+  lead            Lead          @relation(fields: [leadId], references: [id])
+  revision        Int
+  unitPriceEur    Decimal       @db.Decimal(10, 4)
+  qty             Int
+  specs           String?
+  notes           String?
+  paymentTerms    String?
+  dispatchSla     String?
+  snapshot        Json?
+  accessToken     String?       @unique
+  dispatchReqAt   DateTime?
+  sentAt          DateTime?
+  expiresAt       DateTime?
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  status          QuoteStatus   @default(DRAFT)
+  createdAt       DateTime      @default(now())
+  outboxEmails    OutboxEmail[]
 
   @@unique([leadId, revision])
   @@index([leadId])
+  @@index([accessToken])
 }
 
 enum QuoteStatus {
   DRAFT
+  DISPATCHING
   SENT
   ACCEPTED
   REJECTED
   SUPERSEDED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+model OutboxEmail {
+  id        String       @id @default(cuid())
+  quoteId   String?
+  quote     Quote?       @relation(fields: [quoteId], references: [id])
+  to        String
+  from      String
+  subject   String
+  text      String
+  html      String?
+  status    OutboxStatus @default(PENDING)
+  attempts  Int          @default(0)
+  lastError String?
+  sentAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([status, createdAt])
+  @@index([quoteId])
 }
 
 model LeadActivity {
@@ -331,6 +406,8 @@ enum ActivityType {
   STATUS_CHANGE
   QUOTE_CREATED
   QUOTE_REVISED
+  QUOTE_DISPATCHED
+  CUSTOMER_RESPONSE
   FILE_UPLOAD
   SUBMISSION
   EMAIL
@@ -352,3 +429,28 @@ model StoredFile {
   @@index([leadId])
   @@index([quoteRequestId])
 }
+
+enum AdminAuditAction {
+  ADMIN_CREATED
+  ADMIN_ROLE_CHANGED
+  ADMIN_ACTIVATED
+  ADMIN_DEACTIVATED
+  ADMIN_PASSWORD_RESET
+}
+
+model AdminAuditLog {
+  id            String           @id @default(cuid())
+  actorAdminId  String
+  actorAdmin    AdminUser        @relation("ActorAdminLogs", fields: [actorAdminId], references: [id])
+  targetAdminId String
+  targetAdmin   AdminUser        @relation("TargetAdminLogs", fields: [targetAdminId], references: [id])
+  action        AdminAuditAction
+  oldValue      Json?
+  newValue      Json?
+  createdAt     DateTime         @default(now())
+
+  @@index([targetAdminId])
+  @@index([actorAdminId])
+  @@index([createdAt])
+}
+

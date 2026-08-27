@@ -1,7 +1,12 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { useTranslation } from '@/lib/i18n/context';
 
 export const HeroSection: React.FC = () => {
+  const { t, locale } = useTranslation();
+
   return (
     <section className="w-full border-b border-[#c5c6ce] relative overflow-hidden bg-[#eff4ff]">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16 grid grid-cols-1 lg:grid-cols-12 min-h-[640px] lg:min-h-[716px]">
@@ -10,30 +15,31 @@ export const HeroSection: React.FC = () => {
           <div className="inline-flex items-center gap-2 mb-6 sm:mb-8 bg-[#dce9ff] px-3 py-1.5 w-fit border border-[#c5c6ce] rounded-sm">
             <span className="w-2 h-2 rounded-full bg-[#e77114] animate-pulse"></span>
             <span className="font-mono-data text-xs text-[#041632] uppercase tracking-wider font-semibold">
-              Wholesale European Supply
+              {t('hero.badge')}
             </span>
           </div>
 
           <h1 className="font-headline text-3xl sm:text-4xl md:text-5xl font-bold text-[#041632] mb-6 leading-tight max-w-xl">
-            Lower Your Pizza Box Costs Without Compromising Quality.
+            {t('hero.headline')}{' '}
+            <span className="text-[#e77114]">{t('hero.headlineHighlight')}</span>
           </h1>
 
           <p className="font-body text-base text-[#44474d] mb-8 sm:mb-10 max-w-lg leading-relaxed">
-            Professional wholesale pizza box sourcing for European pizza chains. Specialized in high-volume supply and logistics. Every box accounted for, every order on time.
+            {t('hero.subheadline')}
           </p>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <Link
-              href="/calculator"
+              href={`/${locale}/calculator`}
               className="w-full sm:w-auto bg-[#e77114] text-white px-8 py-4 font-mono-data text-xs uppercase tracking-widest hover:bg-[#c25e10] transition-colors shadow-[0px_4px_20px_rgba(27,43,72,0.08)] cursor-pointer text-center font-bold rounded-sm"
             >
-              Check Your Savings
+              {t('hero.primaryCta')}
             </Link>
             <Link
-              href="/quote"
+              href={`/${locale}/quote`}
               className="w-full sm:w-auto border-2 border-[#041632] text-[#041632] bg-transparent px-8 py-4 font-mono-data text-xs uppercase tracking-widest hover:bg-[#041632] hover:text-white transition-colors cursor-pointer text-center font-bold rounded-sm"
             >
-              Request an Exact Quote
+              {t('hero.secondaryCta')}
             </Link>
           </div>
         </div>
@@ -50,13 +56,13 @@ export const HeroSection: React.FC = () => {
           </div>
 
           {/* Decorative Overlay Elements */}
-          <div className="absolute top-6 sm:top-12 right-6 sm:right-12 bg-white/95 backdrop-blur-sm border border-[#c5c6ce] p-4 shadow-[0px_4px_20px_rgba(27,43,72,0.08)] flex items-center gap-4 rounded-sm">
+          <div className="absolute top-6 sm:top-12 right-6 sm:right-12 bg-white/95 backdrop-blur-sm border border-[#c5c6ce] p-4 shadow-[0px_4px_20px_rgba(27,43,72,0.08)] flex items-center gap-4 rounded-sm font-mono-data">
             <div className="bg-[#dce9ff] p-2.5 rounded-sm flex items-center justify-center">
               <span className="material-symbols-outlined text-[#e77114] text-2xl">local_shipping</span>
             </div>
             <div>
-              <p className="font-mono-data text-[11px] text-[#44474d] uppercase font-semibold">Transit Status</p>
-              <p className="font-body text-sm font-bold text-[#041632]">On Schedule</p>
+              <p className="text-[11px] text-[#44474d] uppercase font-semibold">14 European Hubs</p>
+              <p className="font-body text-sm font-bold text-[#041632]">Active Operations</p>
             </div>
           </div>
         </div>

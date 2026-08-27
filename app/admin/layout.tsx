@@ -1,7 +1,9 @@
 import React from 'react';
 import { SideNavBar } from '@/components/admin/SideNavBar';
-import { INITIAL_LEADS } from '@/lib/mockData';
 import { auth, signOut } from '@/lib/auth';
+import { getNewLeadsCount, getDraftQuotesCount } from '@/lib/admin/queries';
+
+export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({
   children,
@@ -17,11 +19,14 @@ export default async function AdminLayout({
     return <>{children}</>;
   }
 
-  const newLeadsCount = INITIAL_LEADS.filter((l) => l.status === 'New').length;
+  const [newLeadsCount, draftQuotesCount] = await Promise.all([
+    getNewLeadsCount(),
+    getDraftQuotesCount(),
+  ]);
 
   return (
     <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-row w-full selection:bg-[#ffdeac] selection:text-[#281900]">
-      <SideNavBar newLeadsCount={newLeadsCount} />
+      <SideNavBar newLeadsCount={newLeadsCount} draftQuotesCount={draftQuotesCount} />
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <div className="flex items-center justify-end gap-3 px-6 py-3 border-b border-[#e2e4ef] bg-white">
           <span className="font-mono-data text-[11px] text-[#4f5e7e]">
@@ -35,7 +40,7 @@ export default async function AdminLayout({
           >
             <button
               type="submit"
-              className="font-mono-data text-[11px] uppercase tracking-wider text-[#041632] hover:text-[#e77114] border border-[#c5c6ce] rounded-md px-3 py-1.5 transition-colors"
+              className="font-mono-data text-[11px] uppercase tracking-wider text-[#041632] hover:text-[#e77114] border border-[#c5c6ce] rounded-md px-3 py-1.5 transition-colors cursor-pointer"
             >
               Sign out
             </button>

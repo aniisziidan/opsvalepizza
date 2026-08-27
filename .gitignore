@@ -3,7 +3,12 @@ dist
 .next
 .env
 .env.local
+.env.production
 *.log
 *.tsbuildinfo
 next-env.d.ts
 uploads/
+playwright-report/
+test-results/
+coverage/
+.DS_Store

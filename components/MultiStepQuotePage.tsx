@@ -14,6 +14,7 @@ import {
   type Step3LogisticsInput,
 } from '@/lib/validation/quoteRequest';
 import { submitQuoteRequest } from '@/app/quote/actions';
+import { useTranslation } from '@/lib/i18n/context';
 
 interface UploadedItem {
   token: string;
@@ -30,6 +31,7 @@ export const MultiStepQuotePage: React.FC<MultiStepQuotePageProps> = ({
   initialCalcState,
 }) => {
   const router = useRouter();
+  const { locale } = useTranslation();
   const [step, setStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
@@ -371,7 +373,7 @@ export const MultiStepQuotePage: React.FC<MultiStepQuotePageProps> = ({
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push(`/${locale}`)}
               className="bg-[#041632] text-white px-8 py-3.5 rounded-lg font-mono-data text-xs uppercase tracking-wider hover:bg-[#1b2b48] transition-colors cursor-pointer font-bold"
             >
               Return to Homepage

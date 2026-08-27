@@ -1,85 +1,124 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { useTranslation } from '@/lib/i18n/context';
 
 export const Footer: React.FC = () => {
+  const { t, locale } = useTranslation();
+
+  const handleOpenCookieSettings = () => {
+    window.dispatchEvent(new CustomEvent('opsvale_open_cookie_preferences'));
+  };
+
   return (
-    <footer className="w-full bg-[#041632] text-white border-t border-[#c5c6ce] relative z-10">
+    <footer className="w-full bg-[#041632] text-white border-t border-[#c5c6ce] relative z-10 font-mono-data text-xs">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16 py-12 sm:py-16">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 pb-12 border-b border-[#1b2b48]">
           {/* Brand Col */}
           <div className="md:col-span-6 lg:col-span-5">
             <Link
-              href="/"
+              href={`/${locale}`}
               className="font-headline text-2xl font-bold text-white flex items-center gap-2 mb-4 hover:opacity-90 transition-opacity cursor-pointer text-left w-fit"
             >
               <span className="material-symbols-outlined text-2xl text-[#e77114]">package</span>
-              OpsVale
+              {t('common.brandName')}
             </Link>
             <p className="font-body text-sm text-[#8393b5] max-w-sm leading-relaxed mb-6">
-              Wholesale pizza box supply chain &amp; logistics engineered specifically for high-volume European pizza chains.
+              {t('common.tagline')}
             </p>
-            <div className="flex items-center gap-2 text-xs font-mono-data text-[#8393b5]">
+            <div className="flex items-center gap-2 text-xs text-[#8393b5]">
               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span>All 14 European Logistics Hubs Operational</span>
+              <span>14 European Logistics Hubs Operational</span>
             </div>
           </div>
 
           {/* Quick Links */}
           <div className="md:col-span-3 lg:col-span-3">
-            <span className="font-mono-data text-xs text-[#e3c290] uppercase tracking-widest block mb-4 font-semibold">
-              Platform
+            <span className="text-xs text-[#e3c290] uppercase tracking-widest block mb-4 font-semibold">
+              Platform &amp; Services
             </span>
-            <ul className="space-y-2.5 font-mono-data text-xs text-[#8393b5]">
+            <ul className="space-y-2.5 text-xs text-[#8393b5]">
               <li>
-                <Link href="/products" className="hover:text-white transition-colors cursor-pointer">
-                  Standard Packaging Catalog
+                <Link href={`/${locale}/products`} className="hover:text-white transition-colors cursor-pointer">
+                  {t('nav.products')}
                 </Link>
               </li>
               <li>
-                <Link href="/how-it-works" className="hover:text-white transition-colors cursor-pointer">
-                  Procurement &amp; Logistics SLA
+                <Link href={`/${locale}/how-it-works`} className="hover:text-white transition-colors cursor-pointer">
+                  {t('nav.howItWorks')}
                 </Link>
               </li>
               <li>
-                <Link href="/calculator" className="hover:text-white transition-colors cursor-pointer">
-                  Cost Savings Calculator
+                <Link href={`/${locale}/calculator`} className="hover:text-white transition-colors cursor-pointer">
+                  {t('nav.calculator')}
                 </Link>
               </li>
               <li>
-                <Link href="/about" className="hover:text-white transition-colors cursor-pointer">
-                  European Hub Network
+                <Link href={`/${locale}/about`} className="hover:text-white transition-colors cursor-pointer">
+                  {t('nav.about')}
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Connect / Legal */}
+          {/* Legal & Compliance Desk */}
           <div className="md:col-span-3 lg:col-span-4">
-            <span className="font-mono-data text-xs text-[#e3c290] uppercase tracking-widest block mb-4 font-semibold">
-              European Dispatch Desk
+            <span className="text-xs text-[#e3c290] uppercase tracking-widest block mb-4 font-semibold">
+              Legal &amp; Compliance Desk
             </span>
-            <p className="font-mono-data text-xs text-[#8393b5] mb-2">
-              Direct Inquiries: <a href="mailto:ops@opsvale.eu" className="text-white hover:underline">ops@opsvale.eu</a>
-            </p>
-            <p className="font-mono-data text-xs text-[#8393b5] mb-4">
-              Central Depot: Industrieweg 44, 3044 GS Rotterdam, NL
-            </p>
+            <ul className="space-y-2.5 text-xs text-[#8393b5] mb-6">
+              <li>
+                <Link href={`/${locale}/imprint`} className="hover:text-white transition-colors cursor-pointer">
+                  {t('legal.imprintTitle')}
+                </Link>
+              </li>
+              <li>
+                <Link href={`/${locale}/privacy`} className="hover:text-white transition-colors cursor-pointer">
+                  {t('legal.privacyTitle')}
+                </Link>
+              </li>
+              <li>
+                <Link href={`/${locale}/terms`} className="hover:text-white transition-colors cursor-pointer">
+                  {t('legal.termsTitle')}
+                </Link>
+              </li>
+              <li>
+                <Link href={`/${locale}/cookies`} className="hover:text-white transition-colors cursor-pointer">
+                  {t('legal.cookiesTitle')}
+                </Link>
+              </li>
+            </ul>
 
             {/* Industrial Barcode representation */}
-            <div className="bg-[#1b2b48] border border-[#4f5e7e] p-3 rounded flex items-center justify-between font-mono-data text-[10px] text-[#8393b5] max-w-xs">
-              <span className="tracking-[4px] font-mono-data text-white font-bold">||||||||||||||||||||</span>
+            <div className="bg-[#1b2b48] border border-[#4f5e7e] p-3 rounded flex items-center justify-between text-[10px] text-[#8393b5] max-w-xs">
+              <span className="tracking-[4px] text-white font-bold">||||||||||||||||||||</span>
               <span className="text-[#e3c290]">OPS-VALE-EUR-01</span>
             </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-mono-data text-[#8393b5]">
-          <p>© 2024 OpsVale B.V. All rights reserved. Pan-European Wholesale Logistics.</p>
-          <div className="flex gap-6">
-            <a href="#privacy" className="hover:text-white">Privacy Policy</a>
-            <a href="#terms" className="hover:text-white">Terms of Supply</a>
-            <a href="#iso" className="hover:text-white">FSC / ISO 9001</a>
+        <div className="pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-[#8393b5]">
+          <p>© 2026 {t('common.brandName')}. {t('common.allRightsReserved')}</p>
+          <div className="flex flex-wrap items-center gap-6">
+            <Link href={`/${locale}/imprint`} className="hover:text-white transition-colors">
+              {t('legal.imprintTitle')}
+            </Link>
+            <Link href={`/${locale}/privacy`} className="hover:text-white transition-colors">
+              {t('legal.privacyTitle')}
+            </Link>
+            <Link href={`/${locale}/terms`} className="hover:text-white transition-colors">
+              {t('legal.termsTitle')}
+            </Link>
+            <button
+              type="button"
+              onClick={handleOpenCookieSettings}
+              className="text-[#e3c290] hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-[14px]">tune</span>
+              <span>{t('consent.customize')}</span>
+            </button>
           </div>
         </div>
       </div>

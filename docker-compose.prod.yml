@@ -1,0 +1,65 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opsvale-app
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opsvale}:${POSTGRES_PASSWORD:-opsvale}@postgres:5432/${POSTGRES_DB:-opsvale}?schema=public
+      - PORT=3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - opsvale-network
+    volumes:
+      - uploads_data:/app/uploads
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: opsvale-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-opsvale}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opsvale}
+      POSTGRES_DB: ${POSTGRES_DB:-opsvale}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opsvale}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - opsvale-network
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: opsvale-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:-opsvale.eu}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - opsvale-network
+
+volumes:
+  postgres_data:
+  uploads_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  opsvale-network:
+    driver: bridge

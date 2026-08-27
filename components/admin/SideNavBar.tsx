@@ -6,16 +6,33 @@ import { usePathname } from 'next/navigation';
 
 interface SideNavBarProps {
   newLeadsCount: number;
+  draftQuotesCount?: number;
 }
 
-export const SideNavBar: React.FC<SideNavBarProps> = ({ newLeadsCount }) => {
+export const SideNavBar: React.FC<SideNavBarProps> = ({
+  newLeadsCount,
+  draftQuotesCount = 0,
+}) => {
   const pathname = usePathname();
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard' },
-    { id: 'leads', label: 'Leads', icon: 'group', badge: newLeadsCount > 0 ? `${newLeadsCount}` : undefined, href: '/admin/leads' },
+    { id: 'analytics', label: 'Analytics & KPIs', icon: 'monitoring', href: '/admin/analytics' },
+    {
+      id: 'leads',
+      label: 'Leads',
+      icon: 'group',
+      badge: newLeadsCount > 0 ? `${newLeadsCount}` : undefined,
+      href: '/admin/leads',
+    },
     { id: 'crm', label: 'CRM Contacts', icon: 'contacts_product', href: '/admin/leads' },
-    { id: 'quotes', label: 'Quotes', icon: 'request_quote', badge: '3', href: '/admin/quotes' },
+    {
+      id: 'quotes',
+      label: 'Quotes',
+      icon: 'request_quote',
+      badge: draftQuotesCount > 0 ? `${draftQuotesCount}` : undefined,
+      href: '/admin/quotes',
+    },
     { id: 'pricing', label: 'Pricing Engine', icon: 'monetization_on', href: '/admin/pricing' },
     { id: 'logistics', label: 'Logistics Hubs', icon: 'local_shipping', href: '/admin/logistics' },
     { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings' },

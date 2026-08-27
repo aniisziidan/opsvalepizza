@@ -1,19 +1,40 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-import { Lead, ActivityItem } from '@/lib/types';
+import { DashboardStats } from '@/lib/admin/queries';
+import { LEAD_STATUS_LABEL, LEAD_STATUS_STYLE, LeadStatus } from '@/lib/types';
+import { timeAgo, formatNumber } from '@/lib/admin/formatters';
 
 interface OpsDashboardProps {
-  leads: Lead[];
-  activities: ActivityItem[];
+  stats: DashboardStats;
 }
 
-export const OpsDashboard: React.FC<OpsDashboardProps> = ({
-  leads,
-  activities,
-}) => {
-  const newLeads = leads.filter((l) => l.status === 'New');
-  const reviewingLeads = leads.filter((l) => l.status === 'Reviewing');
-  const wonLeads = leads.filter((l) => l.status === 'Closed Won');
+export const OpsDashboard: React.FC<OpsDashboardProps> = ({ stats }) => {
+  const { totalLeads, byStatus, recentActivities } = stats;
+
+  const newCount = byStatus.NEW || 0;
+  const reviewingCount = byStatus.REVIEWING || 0;
+  const quotesPreparedCount = byStatus.QUOTE_PREPARED || 0;
+  const quotesSentCount = byStatus.QUOTE_SENT || 0;
+  const negotiatingCount = byStatus.NEGOTIATING || 0;
+  const wonCount = byStatus.WON || 0;
+  const lostCount = byStatus.LOST || 0;
+  const needInfoCount = byStatus.NEED_MORE_INFO || 0;
+
+  const winRate =
+    totalLeads > 0 ? ((wonCount / totalLeads) * 100).toFixed(1) : '0.0';
+
+  const allStatuses: LeadStatus[] = [
+    'NEW',
+    'REVIEWING',
+    'NEED_MORE_INFO',
+    'QUOTE_PREPARED',
+    'QUOTE_SENT',
+    'NEGOTIATING',
+    'WON',
+    'LOST',
+  ];
 
   return (
     <div className="p-6 sm:p-8 md:p-10 space-y-8 max-w-[1440px] mx-auto bg-[#f8f9ff]">
@@ -28,7 +49,7 @@ export const OpsDashboard: React.FC<OpsDashboardProps> = ({
             Operations Dashboard
           </h1>
           <p className="font-body text-sm text-[#44474d]">
-            Overview of pan-European lead generation, pipeline status, and procurement fulfillment.
+            Real-time pipeline overview, inbound lead volume, and procurement activity log.
           </p>
         </div>
 
@@ -45,7 +66,7 @@ export const OpsDashboard: React.FC<OpsDashboardProps> = ({
             className="bg-[#041632] text-white px-5 py-2 rounded-lg font-mono-data text-xs uppercase tracking-wider hover:bg-[#1b2b48] transition-colors flex items-center gap-2 cursor-pointer font-bold shadow-md"
           >
             <span className="material-symbols-outlined text-base">group</span>
-            View All Leads ({leads.length})
+            View All Leads ({formatNumber(totalLeads)})
           </Link>
         </div>
       </div>
@@ -61,8 +82,12 @@ export const OpsDashboard: React.FC<OpsDashboardProps> = ({
               <span className="material-symbols-outlined text-xl">add_circle</span>
             </div>
             <div>
-              <h4 className="font-body text-sm font-bold text-[#041632]">{newLeads.length || 3} New Quote Requests</h4>
-              <p className="font-mono-data text-xs text-[#75777e]">Pending procurement assignment</p>
+              <h4 className="font-body text-sm font-bold text-[#041632]">
+                {newCount} New Inbound Leads
+              </h4>
+              <p className="font-mono-data text-xs text-[#75777e]">
+                Pending initial qualification
+              </p>
             </div>
           </div>
           <span className="material-symbols-outlined text-[#75777e]">chevron_right</span>
@@ -77,8 +102,12 @@ export const OpsDashboard: React.FC<OpsDashboardProps> = ({
               <span className="material-symbols-outlined text-xl">assignment_late</span>
             </div>
             <div>
-              <h4 className="font-body text-sm font-bold text-[#041632]">{reviewingLeads.length || 5} Leads Require Review</h4>
-              <p className="font-mono-data text-xs text-[#75777e]">Awaiting VAT &amp; delivery validation</p>
+              <h4 className="font-body text-sm font-bold text-[#041632]">
+                {reviewingCount + needInfoCount} Leads In Review
+              </h4>
+              <p className="font-mono-data text-xs text-[#75777e]">
+                Specs validation &amp; pricing review
+              </p>
             </div>
           </div>
           <span className="material-symbols-outlined text-[#75777e]">chevron_right</span>
@@ -93,8 +122,12 @@ export const OpsDashboard: React.FC<OpsDashboardProps> = ({
               <span className="material-symbols-outlined text-xl">mark_email_read</span>
             </div>
             <div>
-              <h4 className="font-body text-sm font-bold text-[#041632]">2 Quotes Need Follow-up</h4>
-              <p className="font-mono-data text-xs text-[#75777e]">Sent &gt; 48h ago without reply</p>
+              <h4 className="font-body text-sm font-bold text-[#041632]">
+                {quotesSentCount + negotiatingCount} Active Quotes
+              </h4>
+              <p className="font-mono-data text-xs text-[#75777e]">
+                In client review or negotiation
+              </p>
             </div>
           </div>
           <span className="material-symbols-outlined text-[#75777e]">chevron_right</span>
@@ -104,147 +137,122 @@ export const OpsDashboard: React.FC<OpsDashboardProps> = ({
       {/* 5 Bento KPI Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white border border-[#c5c6ce] p-5 rounded-xl shadow-sm">
-          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">Total Leads</span>
-          <div className="font-headline text-2xl sm:text-3xl font-bold text-[#041632]">1,248</div>
-          <div className="flex items-center gap-1 text-xs text-emerald-600 font-mono-data mt-2">
-            <span className="material-symbols-outlined text-sm">trending_up</span>
-            <span>+12% vs last mo</span>
+          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">
+            Total Leads
+          </span>
+          <div className="font-headline text-2xl sm:text-3xl font-bold text-[#041632]">
+            {formatNumber(totalLeads)}
+          </div>
+          <div className="text-[11px] text-[#75777e] font-mono-data mt-2">
+            All registered accounts
           </div>
         </div>
 
         <div className="bg-white border border-[#c5c6ce] p-5 rounded-xl shadow-sm">
-          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">New Leads (30d)</span>
-          <div className="font-headline text-2xl sm:text-3xl font-bold text-[#041632]">84</div>
-          <div className="flex items-center gap-1 text-xs text-emerald-600 font-mono-data mt-2">
-            <span className="material-symbols-outlined text-sm">trending_up</span>
-            <span>+5% vs last mo</span>
+          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">
+            New Leads
+          </span>
+          <div className="font-headline text-2xl sm:text-3xl font-bold text-[#041632]">
+            {formatNumber(newCount)}
+          </div>
+          <div className="text-[11px] text-[#735a31] font-mono-data mt-2">
+            Awaiting triage
           </div>
         </div>
 
         <div className="bg-white border border-[#c5c6ce] p-5 rounded-xl shadow-sm">
-          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">Quotes Sent</span>
-          <div className="font-headline text-2xl sm:text-3xl font-bold text-[#041632]">312</div>
-          <div className="flex items-center gap-1 text-xs text-emerald-600 font-mono-data mt-2">
-            <span className="material-symbols-outlined text-sm">trending_up</span>
-            <span>+18% vs last mo</span>
+          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">
+            Quotes Prepared/Sent
+          </span>
+          <div className="font-headline text-2xl sm:text-3xl font-bold text-[#041632]">
+            {formatNumber(quotesPreparedCount + quotesSentCount)}
+          </div>
+          <div className="text-[11px] text-[#041632] font-mono-data mt-2">
+            Formal offers issued
           </div>
         </div>
 
         <div className="bg-white border border-[#c5c6ce] p-5 rounded-xl shadow-sm">
-          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">Won Opps</span>
-          <div className="font-headline text-2xl sm:text-3xl font-bold text-[#041632]">145</div>
-          <div className="flex items-center gap-1 text-xs text-emerald-600 font-mono-data mt-2">
-            <span className="material-symbols-outlined text-sm">trending_up</span>
-            <span>+8% vs last mo</span>
+          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">
+            Closed Won
+          </span>
+          <div className="font-headline text-2xl sm:text-3xl font-bold text-emerald-700">
+            {formatNumber(wonCount)}
+          </div>
+          <div className="text-[11px] text-emerald-600 font-mono-data mt-2">
+            Supply contracts secured
           </div>
         </div>
 
         <div className="bg-white border border-[#c5c6ce] p-5 rounded-xl shadow-sm col-span-2 lg:col-span-1">
-          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">Conv. Rate</span>
-          <div className="font-headline text-2xl sm:text-3xl font-bold text-[#e77114]">46.4%</div>
-          <div className="flex items-center gap-1 text-xs text-emerald-600 font-mono-data mt-2">
-            <span className="material-symbols-outlined text-sm">trending_up</span>
-            <span>+2.1% SLA beat</span>
+          <span className="font-mono-data text-xs text-[#75777e] uppercase block mb-1 font-semibold">
+            Win Rate
+          </span>
+          <div className="font-headline text-2xl sm:text-3xl font-bold text-[#e77114]">
+            {winRate}%
+          </div>
+          <div className="text-[11px] text-[#75777e] font-mono-data mt-2">
+            {wonCount} won / {totalLeads} total
           </div>
         </div>
       </div>
 
       {/* Main Grid Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Regional Analytics & Pipeline */}
+        {/* Left Column: Full Pipeline Breakdown */}
         <div className="lg:col-span-7 space-y-8">
-          {/* Leads by Territory */}
+          {/* Complete 8-Status Pipeline Grid */}
           <div className="bg-white border border-[#c5c6ce] rounded-xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="font-headline text-lg font-bold text-[#041632]">Leads by European Territory</h3>
-                <p className="font-mono-data text-xs text-[#75777e]">Geographic demand across 14 central delivery corridors</p>
+                <h3 className="font-headline text-lg font-bold text-[#041632]">
+                  Pipeline Distribution (All 8 Statuses)
+                </h3>
+                <p className="font-mono-data text-xs text-[#75777e]">
+                  Active lead stages across the full procurement lifecycle
+                </p>
               </div>
-              <span className="material-symbols-outlined text-[#75777e]">public</span>
+              <span className="material-symbols-outlined text-[#75777e]">stacked_bar_chart</span>
             </div>
 
-            {/* Region Cluster Bars */}
-            <div className="space-y-4 font-mono-data text-xs">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-bold text-[#041632]">Central Europe (DE, PL, CZ, AT)</span>
-                  <span className="text-[#e77114] font-bold">42% (524 leads)</span>
-                </div>
-                <div className="w-full bg-[#eff4ff] h-3 rounded-full overflow-hidden">
-                  <div className="bg-[#041632] h-full rounded-full" style={{ width: '42%' }}></div>
-                </div>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {allStatuses.map((status) => {
+                const count = byStatus[status] || 0;
+                const percentage =
+                  totalLeads > 0 ? ((count / totalLeads) * 100).toFixed(0) : '0';
 
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-bold text-[#041632]">Southern Europe (IT, ES, PT, GR)</span>
-                  <span className="text-[#e77114] font-bold">31% (386 leads)</span>
-                </div>
-                <div className="w-full bg-[#eff4ff] h-3 rounded-full overflow-hidden">
-                  <div className="bg-[#e77114] h-full rounded-full" style={{ width: '31%' }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-bold text-[#041632]">Western Europe (FR, BE, NL)</span>
-                  <span className="text-[#e77114] font-bold">19% (237 leads)</span>
-                </div>
-                <div className="w-full bg-[#eff4ff] h-3 rounded-full overflow-hidden">
-                  <div className="bg-[#735a31] h-full rounded-full" style={{ width: '19%' }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-bold text-[#041632]">UK &amp; Nordics (UK, SE, DK, NO)</span>
-                  <span className="text-[#e77114] font-bold">8% (101 leads)</span>
-                </div>
-                <div className="w-full bg-[#eff4ff] h-3 rounded-full overflow-hidden">
-                  <div className="bg-[#8393b5] h-full rounded-full" style={{ width: '8%' }}></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Pipeline Funnel */}
-          <div className="bg-white border border-[#c5c6ce] rounded-xl p-6 shadow-sm">
-            <h3 className="font-headline text-lg font-bold text-[#041632] mb-4">Pipeline Distribution</h3>
-            <div className="grid grid-cols-5 gap-2 text-center font-mono-data text-xs">
-              <div className="p-3 bg-[#eff4ff] border border-[#c5c6ce] rounded-lg">
-                <span className="text-[#75777e] block text-[10px]">Inbound</span>
-                <span className="font-bold text-base text-[#041632] block my-1">84</span>
-                <span className="text-[10px] text-[#e77114]">27%</span>
-              </div>
-              <div className="p-3 bg-[#eff4ff] border border-[#c5c6ce] rounded-lg">
-                <span className="text-[#75777e] block text-[10px]">Review</span>
-                <span className="font-bold text-base text-[#041632] block my-1">56</span>
-                <span className="text-[10px] text-[#e77114]">18%</span>
-              </div>
-              <div className="p-3 bg-[#eff4ff] border border-[#c5c6ce] rounded-lg">
-                <span className="text-[#75777e] block text-[10px]">Quoted</span>
-                <span className="font-bold text-base text-[#041632] block my-1">92</span>
-                <span className="text-[10px] text-[#e77114]">29%</span>
-              </div>
-              <div className="p-3 bg-[#eff4ff] border border-[#c5c6ce] rounded-lg">
-                <span className="text-[#75777e] block text-[10px]">Negotiating</span>
-                <span className="font-bold text-base text-[#041632] block my-1">45</span>
-                <span className="text-[10px] text-[#e77114]">14%</span>
-              </div>
-              <div className="p-3 bg-[#eff4ff] border border-[#c5c6ce] rounded-lg">
-                <span className="text-[#75777e] block text-[10px]">Won</span>
-                <span className="font-bold text-base text-emerald-600 block my-1">35</span>
-                <span className="text-[10px] text-emerald-600">12%</span>
-              </div>
+                return (
+                  <div
+                    key={status}
+                    className="p-3 bg-[#f8f9ff] border border-[#c5c6ce]/70 rounded-lg flex flex-col justify-between"
+                  >
+                    <div>
+                      <span className="font-mono-data text-[10px] uppercase font-bold text-[#75777e] block truncate">
+                        {LEAD_STATUS_LABEL[status]}
+                      </span>
+                      <span className="font-headline text-xl font-bold text-[#041632] block my-1">
+                        {count}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#c5c6ce]/40 font-mono-data text-[10px]">
+                      <span className={`px-1.5 py-0.5 rounded font-bold ${LEAD_STATUS_STYLE[status]}`}>
+                        {percentage}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Right Column: Recent Activity Feed & Active Leads */}
+        {/* Right Column: Recent Activity Feed */}
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-white border border-[#c5c6ce] rounded-xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-headline text-lg font-bold text-[#041632]">Recent Activity</h3>
+              <h3 className="font-headline text-lg font-bold text-[#041632]">
+                Recent Lead Activity
+              </h3>
               <Link
                 href="/admin/leads"
                 className="font-mono-data text-xs text-[#e77114] hover:underline font-semibold cursor-pointer"
@@ -253,64 +261,39 @@ export const OpsDashboard: React.FC<OpsDashboardProps> = ({
               </Link>
             </div>
 
-            <div className="divide-y divide-[#c5c6ce]/60 font-body text-xs">
-              {activities.map((act) => (
-                <div key={act.id} className="py-3.5 first:pt-0 last:pb-0">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#e77114] flex-shrink-0"></span>
-                      <strong className="text-[#041632]">{act.author}</strong>
-                      <span className="text-[#44474d]">{act.subject}</span>
-                      <strong className="text-[#041632] font-semibold">{act.company}</strong>
+            {recentActivities.length === 0 ? (
+              <div className="py-8 text-center text-[#75777e] font-mono-data text-xs bg-[#f8f9ff] rounded-lg border border-dashed border-[#c5c6ce]">
+                No recent activity recorded yet.
+              </div>
+            ) : (
+              <div className="divide-y divide-[#c5c6ce]/60 font-body text-xs">
+                {recentActivities.map((act) => (
+                  <div key={act.id} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#e77114] flex-shrink-0"></span>
+                        <strong className="text-[#041632]">
+                          {act.authorName || 'System'}
+                        </strong>
+                        <Link
+                          href={`/admin/leads/${act.leadId}`}
+                          className="font-mono-data text-[#041632] hover:text-[#e77114] font-bold"
+                        >
+                          {act.leadCode}
+                        </Link>
+                        <span className="text-[#75777e] truncate max-w-[120px]">
+                          ({act.companyName})
+                        </span>
+                      </div>
+                      <span className="font-mono-data text-[11px] text-[#75777e] whitespace-nowrap">
+                        {timeAgo(act.createdAt)}
+                      </span>
                     </div>
-                    <span className="font-mono-data text-[11px] text-[#75777e] whitespace-nowrap">{act.timeAgo}</span>
-                  </div>
-
-                  {act.tag && (
-                    <span className="inline-block bg-[#dce9ff] text-[#041632] font-mono-data text-[10px] px-2 py-0.5 rounded mt-1 font-semibold">
-                      {act.tag}
-                    </span>
-                  )}
-                  {act.noteSnippet && (
-                    <p className="text-[#75777e] italic mt-1 font-body text-[11px] bg-[#f8f9ff] p-2 rounded border border-[#c5c6ce]/40">
-                      "{act.noteSnippet}"
+                    <p className="text-[#44474d] bg-[#f8f9ff] p-2 rounded border border-[#c5c6ce]/40 font-mono-data text-[11px]">
+                      {act.content}
                     </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick Lead Spotlight */}
-          <div className="bg-[#1b2b48] text-white p-6 rounded-xl border border-[#4f5e7e] space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="font-mono-data text-xs text-[#e3c290] uppercase font-semibold">Lead in Spotlight</span>
-              <span className="bg-[#e77114] text-white font-mono-data text-[10px] font-bold px-2 py-0.5 rounded">
-                High Priority
-              </span>
-            </div>
-            {leads[0] && (
-              <div>
-                <h4 className="font-headline text-xl font-bold text-white mb-1">{leads[0].companyName}</h4>
-                <p className="font-mono-data text-xs text-[#8393b5] mb-4">
-                  {leads[0].contactName} • {leads[0].location}
-                </p>
-                <div className="bg-[#213145] p-3 rounded border border-[#4f5e7e] font-mono-data text-xs space-y-1 mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-[#8393b5]">Monthly Volume:</span>
-                    <span className="font-bold text-white">{leads[0].calculatorData.monthlyVolume.toLocaleString()} pcs</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#8393b5]">Est. Yearly Savings:</span>
-                    <span className="font-bold text-[#e3c290]">€{leads[0].calculatorData.estimatedSavingsYearly.toLocaleString()}</span>
-                  </div>
-                </div>
-                <Link
-                  href={`/admin/leads/${leads[0].id}`}
-                  className="block text-center w-full bg-[#ffdeac] text-[#281900] py-2.5 rounded-lg font-mono-data text-xs uppercase font-bold tracking-wider hover:bg-[#fddba7] transition-colors cursor-pointer"
-                >
-                  Open Lead Dossier ({leads[0].code})
-                </Link>
+                ))}
               </div>
             )}
           </div>

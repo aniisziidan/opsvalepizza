@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalculatorState } from '@/lib/types';
+import { useTranslation } from '@/lib/i18n/context';
 
 interface SavingsCalculatorPageProps {
   initialVolume?: number;
@@ -28,14 +29,14 @@ type CalculatorApiResult =
       reason: 'unsupported_combination' | 'no_estimate';
     };
 
-// Countries the API/pricing data supports as valid 2-letter codes. The UI
-// already stores ISO-style codes; 'OTHER' is a sentinel with no code.
 const SUPPORTED_COUNTRY_CODES = ['DE', 'FR', 'IT', 'ES', 'NL', 'UK', 'BE', 'PL', 'AT'];
 
 export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
   initialVolume = 20000,
 }) => {
   const router = useRouter();
+  const { t, locale } = useTranslation();
+
   const [country, setCountry] = useState<string>('IT');
   const [boxSize, setBoxSize] = useState<'28cm' | '32cm' | '40cm'>('32cm');
   const [material, setMaterial] = useState<'kraft' | 'white'>('kraft');
@@ -52,16 +53,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
 
-  // Track the latest request so out-of-order responses (from rapid input
-  // changes) never overwrite fresher results.
   const requestIdRef = useRef(0);
-
-  useEffect(() => {
-    if (initialVolume && initialVolume !== monthlyVolume) {
-      setMonthlyVolume(initialVolume);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialVolume]);
 
   const formatCurrency = (val: number) => {
     return val.toLocaleString('en-EU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -80,8 +72,6 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
   const fetchEstimate = useCallback(async () => {
     const reqId = ++requestIdRef.current;
 
-    // 'OTHER' (or any non 2-letter sentinel) cannot be priced — surface the
-    // missing-data path without hitting the API with an invalid code.
     if (!SUPPORTED_COUNTRY_CODES.includes(country)) {
       setError(false);
       setIsLoading(false);
@@ -104,11 +94,11 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
           print,
           boxesPerOrder,
           monthlyVolume,
-          currentPrice,
+          currentPriceEur: currentPrice,
         }),
       });
 
-      if (reqId !== requestIdRef.current) return; // stale response, ignore
+      if (reqId !== requestIdRef.current) return;
 
       if (!res.ok) {
         setResult(null);
@@ -139,15 +129,13 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
     void fetchEstimate();
   };
 
-  // Auto-recalc after the first calculation, debounced ~400ms.
   useEffect(() => {
     if (!hasCalculated) return;
-    const t = setTimeout(() => {
+    const tTimer = setTimeout(() => {
       void fetchEstimate();
     }, 400);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [country, boxSize, material, print, boxesPerOrder, monthlyVolume, currentPrice, hasCalculated]);
+    return () => clearTimeout(tTimer);
+  }, [country, boxSize, material, print, boxesPerOrder, monthlyVolume, currentPrice, hasCalculated, fetchEstimate]);
 
   const available = result?.available === true;
   const unavailable = result?.available === false;
@@ -166,34 +154,31 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
       currentPrice: String(currentCalcState.currentPrice),
       savings: String(yearlyForQuote),
     });
-    router.push(`/quote?${params.toString()}`);
+    router.push(`/${locale}/quote?${params.toString()}`);
   };
 
   return (
     <div className="w-full relative py-10 sm:py-16 overflow-hidden">
-      {/* Subtle grid background */}
-      <div className="absolute inset-0 z-0 industrial-grid-subtle pointer-events-none opacity-40"></div>
-
       <div className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16 relative z-10">
-        {/* Header / Intro */}
+        {/* Header */}
         <div className="mb-10 border-l-4 border-[#e77114] pl-6 py-2">
           <h1 className="font-headline text-3xl sm:text-4xl md:text-5xl font-bold text-[#041632] mb-4">
-            Calculate Your Packaging Savings
+            {t('calculator.title')}
           </h1>
           <p className="font-body text-base text-[#44474d] max-w-2xl leading-relaxed">
-            Enter your current procurement metrics below. Our industrial-grade calculator analyzes your volume against our direct-from-factory pricing to reveal your exact cost reduction potential.
+            {t('calculator.subtitle')}
           </p>
         </div>
 
         {/* Calculator Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Calculator Form (Left Column) */}
+          {/* Calculator Form */}
           <div className="lg:col-span-7 bg-white border border-[#c5c6ce] p-6 sm:p-8 rounded-xl shadow-[0px_4px_20px_rgba(27,43,72,0.04)]">
             <form onSubmit={handleCalculate} className="space-y-8 flex flex-col h-full">
               {/* 01. Country */}
               <div className="space-y-2">
                 <label className="font-mono-data text-xs text-[#0b1c30] block uppercase tracking-wider font-semibold" htmlFor="country-select">
-                  01. Delivery Country
+                  01. {t('calculator.destinationCountry')}
                 </label>
                 <div className="relative">
                   <select
@@ -222,10 +207,9 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
               {/* 02. Box Size */}
               <div className="space-y-2">
                 <label className="font-mono-data text-xs text-[#0b1c30] block uppercase tracking-wider font-semibold">
-                  02. Primary Box Size
+                  02. {t('calculator.boxSize')}
                 </label>
                 <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                  {/* 28cm */}
                   <button
                     type="button"
                     onClick={() => setBoxSize('28cm')}
@@ -236,10 +220,9 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                     }`}
                   >
                     <span className="material-symbols-outlined text-2xl">crop_square</span>
-                    <span className="font-body text-xs sm:text-sm font-semibold">28cm / 11"</span>
+                    <span className="font-body text-xs sm:text-sm font-semibold">28cm / 11&quot;</span>
                   </button>
 
-                  {/* 32cm */}
                   <button
                     type="button"
                     onClick={() => setBoxSize('32cm')}
@@ -250,13 +233,12 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                     }`}
                   >
                     <span className="material-symbols-outlined text-3xl">crop_square</span>
-                    <span className="font-body text-xs sm:text-sm font-semibold">32cm / 13"</span>
+                    <span className="font-body text-xs sm:text-sm font-semibold">32cm / 13&quot;</span>
                     <span className="text-[10px] bg-[#e77114] text-white px-2 py-0.5 rounded-full absolute -top-2.5 font-mono-data font-bold">
-                      Popular
+                      Standard
                     </span>
                   </button>
 
-                  {/* 40cm */}
                   <button
                     type="button"
                     onClick={() => setBoxSize('40cm')}
@@ -267,7 +249,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                     }`}
                   >
                     <span className="material-symbols-outlined text-4xl">crop_square</span>
-                    <span className="font-body text-xs sm:text-sm font-semibold">40cm / 16"</span>
+                    <span className="font-body text-xs sm:text-sm font-semibold">40cm / 16&quot;</span>
                   </button>
                 </div>
               </div>
@@ -275,13 +257,13 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
               {/* 03. Material & Print */}
               <div className="space-y-2">
                 <label className="font-mono-data text-xs text-[#0b1c30] block uppercase tracking-wider font-semibold">
-                  03. Material &amp; Print
+                  03. {t('calculator.material')} &amp; {t('calculator.print')}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Material Color */}
+                  {/* Material */}
                   <div className="space-y-3 p-4 border border-[#c5c6ce] rounded-lg bg-[#f8f9ff]">
                     <span className="font-body text-xs font-semibold text-[#44474d] block mb-1">
-                      Material Color
+                      {t('calculator.material')}
                     </span>
                     <div className="flex flex-wrap gap-4">
                       <label className="flex items-center gap-2 cursor-pointer group">
@@ -293,7 +275,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                           className="w-4 h-4 text-[#041632] focus:ring-[#041632] border-[#c5c6ce]"
                         />
                         <span className="w-5 h-5 rounded-full bg-[#d2b48c] border border-[#a08a6b] shadow-inner group-hover:scale-110 transition-transform"></span>
-                        <span className="font-body text-sm font-medium">Kraft Brown</span>
+                        <span className="font-body text-sm font-medium">{t('calculator.materialKraft')}</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer group">
                         <input
@@ -304,15 +286,15 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                           className="w-4 h-4 text-[#041632] focus:ring-[#041632] border-[#c5c6ce]"
                         />
                         <span className="w-5 h-5 rounded-full bg-white border border-[#c5c6ce] shadow-inner group-hover:scale-110 transition-transform"></span>
-                        <span className="font-body text-sm font-medium">White</span>
+                        <span className="font-body text-sm font-medium">{t('calculator.materialWhite')}</span>
                       </label>
                     </div>
                   </div>
 
-                  {/* Print Type */}
+                  {/* Print */}
                   <div className="space-y-3 p-4 border border-[#c5c6ce] rounded-lg bg-[#f8f9ff]">
                     <span className="font-body text-xs font-semibold text-[#44474d] block mb-1">
-                      Print Type
+                      {t('calculator.print')}
                     </span>
                     <div className="flex flex-col gap-2.5">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -323,7 +305,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                           onChange={() => setPrint('plain')}
                           className="w-4 h-4 text-[#041632] focus:ring-[#041632] border-[#c5c6ce]"
                         />
-                        <span className="font-body text-sm">Plain (No Print)</span>
+                        <span className="font-body text-sm">{t('calculator.printPlain')}</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -333,7 +315,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                           onChange={() => setPrint('custom')}
                           className="w-4 h-4 text-[#041632] focus:ring-[#041632] border-[#c5c6ce]"
                         />
-                        <span className="font-body text-sm font-medium">Custom Printed (1-3 colors)</span>
+                        <span className="font-body text-sm font-medium">{t('calculator.printPrinted')}</span>
                       </label>
                     </div>
                   </div>
@@ -344,7 +326,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="font-mono-data text-xs text-[#0b1c30] block uppercase tracking-wider font-semibold" htmlFor="boxes_per_order">
-                    04. Boxes Per Order
+                    04. {t('calculator.boxesPerOrderLabel')}
                   </label>
                   <div className="relative flex items-center border border-[#c5c6ce] rounded-sm bg-[#eff4ff] focus-within:ring-2 focus-within:ring-[#041632] focus-within:border-transparent transition-shadow">
                     <span className="material-symbols-outlined text-[#44474d] pl-4">inventory_2</span>
@@ -359,12 +341,12 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                       className="w-full bg-transparent border-none px-4 py-3.5 font-body text-base text-[#0b1c30] focus:ring-0 h-12 outline-none"
                     />
                   </div>
-                  <p className="text-xs text-[#44474d] mt-1 font-mono-data">Min. order quantity usually 1,000.</p>
+                  <p className="text-xs text-[#44474d] mt-1 font-mono-data">Min. batch 1,000 units.</p>
                 </div>
 
                 <div className="space-y-2">
                   <label className="font-mono-data text-xs text-[#0b1c30] block uppercase tracking-wider font-semibold" htmlFor="boxes_per_month">
-                    05. Monthly Volume
+                    05. {t('calculator.monthlyVolumeLabel')}
                   </label>
                   <div className="relative flex items-center border border-[#c5c6ce] rounded-sm bg-[#eff4ff] focus-within:ring-2 focus-within:ring-[#041632] focus-within:border-transparent transition-shadow">
                     <span className="material-symbols-outlined text-[#44474d] pl-4">calendar_month</span>
@@ -385,7 +367,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
               {/* 06. Current Price */}
               <div className="space-y-2">
                 <label className="font-mono-data text-xs text-[#0b1c30] block uppercase tracking-wider font-semibold" htmlFor="current_price">
-                  06. Current Price Per Box (€)
+                  06. {t('calculator.currentPriceLabel')}
                 </label>
                 <div className="relative flex items-center border border-[#c5c6ce] rounded-sm bg-[#eff4ff] focus-within:ring-2 focus-within:ring-[#041632] focus-within:border-transparent transition-shadow max-w-xs">
                   <span className="pl-4 font-mono-data text-[#44474d] text-lg font-bold">€</span>
@@ -409,24 +391,21 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                   className="w-full bg-[#e77114] text-white py-4 px-8 rounded-lg font-headline text-lg font-bold hover:bg-[#c25e10] transition-all flex items-center justify-center gap-3 shadow-[0px_4px_14px_rgba(231,113,20,0.3)] hover:shadow-[0px_6px_20px_rgba(231,113,20,0.4)] cursor-pointer"
                 >
                   <span className="material-symbols-outlined">analytics</span>
-                  Calculate My Potential Savings
+                  {t('calculator.calculateBtn')}
                 </button>
               </div>
             </form>
           </div>
 
-          {/* Results Section (Right Column) */}
+          {/* Results Section */}
           <div className="lg:col-span-5 flex flex-col h-full">
             <div className="bg-[#041632] text-white p-6 sm:p-8 rounded-xl shadow-xl flex-grow flex flex-col relative overflow-hidden transition-all duration-300">
-              {/* Background structural lines */}
-              <div className="absolute inset-0 z-0 industrial-grid-subtle opacity-10 pointer-events-none"></div>
-
               <div className="relative z-10 flex flex-col h-full">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-6 sm:mb-8 border-b border-white/20 pb-4">
                   <span className="material-symbols-outlined text-3xl text-[#ffdeac]">monitoring</span>
                   <h2 className="font-headline text-xl sm:text-2xl font-semibold text-[#ffdeac]">
-                    Savings Analysis
+                    {t('calculator.annualSavingsTitle')}
                   </h2>
                   {isLoading && (
                     <span
@@ -438,7 +417,6 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                   )}
                 </div>
 
-                {/* Error / retry state */}
                 {error ? (
                   <div className="flex-grow flex flex-col items-center justify-center text-center py-8 gap-4">
                     <span className="material-symbols-outlined text-4xl text-[#ffdeac]">error</span>
@@ -455,16 +433,13 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                     </button>
                   </div>
                 ) : unavailable ? (
-                  /* Missing-data path (spec §10) */
                   <div className="flex-grow flex flex-col">
                     <div className="bg-[#213145]/70 border border-white/10 rounded-lg p-6 flex flex-col items-start gap-4">
                       <span className="material-symbols-outlined text-3xl text-[#ffdeac]">
                         request_quote
                       </span>
                       <p className="font-body text-base text-[#dce9ff] leading-relaxed">
-                        We don&apos;t yet have an instant estimate for this exact requirement.
-                        Request an exact quote and we&apos;ll review your requirements within 24
-                        business hours.
+                        {t('calculator.missingDataPrompt')}
                       </p>
                     </div>
 
@@ -474,11 +449,11 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                         onClick={handleRequestQuote}
                         className="w-full bg-[#ffdeac] text-[#281900] py-3.5 px-6 rounded-lg font-mono-data text-xs uppercase tracking-widest hover:bg-[#fddba7] transition-colors shadow-md flex items-center justify-center gap-2 font-bold cursor-pointer"
                       >
-                        Request an Exact Quote
+                        {t('common.requestQuoteCta')}
                         <span className="material-symbols-outlined">arrow_forward</span>
                       </button>
                       <p className="text-[11px] text-[#cbdbf5]/70 text-center leading-tight">
-                        Disclaimer: Estimated savings are based on information provided and standard OpsVale pricing tiers for similar volumes and specifications. Actual quotes may vary based on final logistics routing and precise raw material costs at time of order.
+                        {t('calculator.formulaDisclaimer')}
                       </p>
                     </div>
                   </div>
@@ -488,7 +463,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                       {/* Primary Savings Metric */}
                       <div className="bg-[#213145]/70 border border-white/10 rounded-lg p-6">
                         <span className="font-mono-data text-xs text-[#b7c7eb] uppercase tracking-widest block mb-2 font-semibold">
-                          Estimated Yearly Savings ⭐
+                          {t('calculator.annualSavingsTitle')}
                         </span>
                         <div className={`font-headline text-3xl sm:text-4xl lg:text-5xl font-bold flex items-baseline gap-1 text-white ${
                           isAnimating ? 'scale-105 text-[#e77114]' : ''
@@ -515,7 +490,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                       <div className="grid grid-cols-2 gap-4">
                         <div className="border border-[#c5c6ce]/30 rounded-lg p-4 bg-white/5">
                           <span className="font-mono-data text-[11px] text-[#cbdbf5] uppercase block mb-1 font-semibold">
-                            Savings Per Box ⭐
+                            {t('calculator.savingsPerBoxTitle')}
                           </span>
                           <div className="font-headline text-xl sm:text-2xl text-[#fddba7] font-semibold">
                             {available ? (
@@ -536,7 +511,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
 
                         <div className="border border-[#c5c6ce]/30 rounded-lg p-4 bg-white/5">
                           <span className="font-mono-data text-[11px] text-[#cbdbf5] uppercase block mb-1 font-semibold">
-                            OpsVale Price Range
+                            {t('calculator.estimatedBandTitle')}
                           </span>
                           <div className="font-headline text-xl sm:text-2xl text-white font-semibold">
                             {available ? (
@@ -561,7 +536,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                           onClick={() => setDetailsOpen(!detailsOpen)}
                           className="w-full cursor-pointer p-4 font-mono-data text-xs text-[#f8f9ff] flex justify-between items-center hover:bg-[#1b2b48] transition-colors uppercase font-semibold"
                         >
-                          Detailed Volume Breakdown
+                          Detailed Breakdown
                           <span className={`material-symbols-outlined transition-transform duration-200 ${
                             detailsOpen ? 'rotate-180' : ''
                           }`}>
@@ -570,7 +545,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                         </button>
 
                         {detailsOpen && (
-                          <div className="p-4 border-t border-white/10 space-y-3 font-body text-sm text-[#dce9ff] bg-[#213145]/40">
+                          <div className="p-4 border-t border-white/10 space-y-3 font-body text-sm text-[#dce9ff] bg-[#213145]/40 font-mono-data text-xs">
                             <div className="flex justify-between py-1 border-b border-white/10">
                               <span>Current Price / Box:</span>
                               <span className="font-semibold text-white">€{formatCurrency(currentPrice)}</span>
@@ -584,7 +559,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                               </span>
                             </div>
                             <div className="flex justify-between py-1 border-b border-white/10">
-                              <span>Savings / Box:</span>
+                              <span>{t('calculator.savingsPerBoxTitle')}:</span>
                               <span className="font-semibold text-white">
                                 {available
                                   ? `€${formatCurrency(result.savings.perBoxMin)} – €${formatCurrency(result.savings.perBoxMax)}`
@@ -592,43 +567,16 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                               </span>
                             </div>
                             <div className="flex justify-between py-1 border-b border-white/10">
-                              <span>Savings %:</span>
-                              <span className="font-semibold text-white">
-                                {available
-                                  ? `${result.savings.pctMin.toFixed(1)}% – ${result.savings.pctMax.toFixed(1)}%`
-                                  : '--'}
-                              </span>
-                            </div>
-                            <div className="flex justify-between py-1 border-b border-white/10">
-                              <span>Monthly Volume:</span>
+                              <span>{t('calculator.monthlyVolumeLabel')}:</span>
                               <span className="font-semibold text-white">{monthlyVolume.toLocaleString('en-EU')}</span>
                             </div>
-                            <div className="flex justify-between py-1 border-b border-white/10">
-                              <span>Annual Volume:</span>
-                              <span className="font-semibold text-white">
-                                {available
-                                  ? result.savings.annualVolume.toLocaleString('en-EU')
-                                  : '--'}
-                              </span>
-                            </div>
-                            <div className="flex justify-between py-1 border-b border-white/10">
-                              <span>Monthly Savings:</span>
-                              <span className="font-semibold text-white">
-                                {available
-                                  ? `€${formatCurrency(result.savings.yearlyMin / 12)} – €${formatCurrency(result.savings.yearlyMax / 12)}`
-                                  : '--'}
-                              </span>
-                            </div>
                             <div className="flex justify-between py-1">
-                              <span>Yearly Savings:</span>
+                              <span>{t('calculator.annualSavingsTitle')}:</span>
                               <span className="font-semibold text-[#e3c290]">
                                 {available
                                   ? `€${formatCurrency(result.savings.yearlyMin)} – €${formatCurrency(result.savings.yearlyMax)}`
                                   : '--'}
                               </span>
-                            </div>
-                            <div className="flex justify-between py-1 text-xs text-[#b7c7eb] pt-2">
-                              <span>*Assumes 12 orders/year at the specified monthly volume. Savings shown as a min–max range across the OpsVale price band.</span>
                             </div>
                           </div>
                         )}
@@ -642,12 +590,12 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                         onClick={handleRequestQuote}
                         className="w-full bg-[#ffdeac] text-[#281900] py-3.5 px-6 rounded-lg font-mono-data text-xs uppercase tracking-widest hover:bg-[#fddba7] transition-colors shadow-md flex items-center justify-center gap-2 font-bold cursor-pointer"
                       >
-                        Request an Exact Quote
+                        {t('common.requestQuoteCta')}
                         <span className="material-symbols-outlined">arrow_forward</span>
                       </button>
 
                       <p className="text-[11px] text-[#cbdbf5]/70 text-center leading-tight">
-                        Disclaimer: Estimated savings are based on information provided and standard OpsVale pricing tiers for similar volumes and specifications. Actual quotes may vary based on final logistics routing and precise raw material costs at time of order.
+                        {t('calculator.formulaDisclaimer')}
                       </p>
                     </div>
                   </>

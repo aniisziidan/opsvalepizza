@@ -1,5 +1,5 @@
-import { ProductsPage } from '@/components/ProductsPage';
+import { redirect } from 'next/navigation';
 
-export default function Products() {
-  return <ProductsPage />;
+export default function ProductsRedirect() {
+  redirect('/en/products');
 }

@@ -130,8 +130,8 @@ export async function submitQuoteRequest(
         prisma.landedCost.findMany({
           where: { active: true, boxConfigId: box.id, countryId: country.id },
         }),
-        prisma.publicPriceRange.findUnique({
-          where: { boxConfigId_countryId: { boxConfigId: box.id, countryId: country.id } },
+        prisma.publicPriceRange.findFirst({
+          where: { boxConfigId: box.id, countryId: country.id, active: true },
         }),
       ]);
 

@@ -3,17 +3,19 @@ import crypto from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { storage } from '@/lib/storage';
 import { validateUploadedFile } from '@/lib/validation/fileUpload';
-import { rateLimiter, getClientIp } from '@/lib/security/rateLimiter';
+import {
+  getClientIp,
+  checkRateLimit,
+  createRateLimitResponse,
+  RATE_LIMIT_TIERS,
+} from '@/lib/ratelimit/rateLimiter';
 
 export async function POST(req: Request) {
   // 1. Rate limiting: 10 uploads per 60 seconds per IP
   const clientIp = getClientIp(req);
-  const rateLimit = await rateLimiter.check(`upload:${clientIp}`, 10, 60_000);
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a moment before uploading more files.' },
-      { status: 429 },
-    );
+  const rateLimit = checkRateLimit(`upload:${clientIp}`, RATE_LIMIT_TIERS.FILE_UPLOAD);
+  if (!rateLimit.success) {
+    return createRateLimitResponse(rateLimit);
   }
 
   try {

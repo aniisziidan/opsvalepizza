@@ -1,6 +1,9 @@
 import { OpsDashboard } from '@/components/admin/OpsDashboard';
-import { INITIAL_LEADS, INITIAL_ACTIVITIES } from '@/lib/mockData';
+import { getDashboardStats } from '@/lib/admin/queries';
 
-export default function AdminDashboard() {
-  return <OpsDashboard leads={INITIAL_LEADS} activities={INITIAL_ACTIVITIES} />;
+export const dynamic = 'force-dynamic';
+
+export default async function AdminDashboard() {
+  const stats = await getDashboardStats();
+  return <OpsDashboard stats={stats} />;
 }
