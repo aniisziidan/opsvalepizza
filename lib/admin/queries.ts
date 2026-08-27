@@ -962,10 +962,10 @@ export async function getAdminAuditLogs(): Promise<AdminAuditLogRow[]> {
   return logs.map((l) => ({
     id: l.id,
     actorAdminId: l.actorAdminId,
-    actorAdminName: l.actorAdmin.name,
+    actorAdminName: l.actorAdmin?.name ?? 'System',
     targetAdminId: l.targetAdminId,
-    targetAdminName: l.targetAdmin.name,
-    targetAdminEmail: l.targetAdmin.email,
+    targetAdminName: l.targetAdmin?.name ?? 'Deleted Admin',
+    targetAdminEmail: l.targetAdmin?.email ?? '—',
     action: l.action,
     oldValue: l.oldValue,
     newValue: l.newValue,

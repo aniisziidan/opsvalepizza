@@ -15,12 +15,15 @@ export interface AuthenticatedAdmin {
  */
 export async function requireAdmin(requiredRoles?: Role[]): Promise<AuthenticatedAdmin> {
   const session = await auth();
-  if (!session?.user?.id) {
+  const userId = session?.user?.id;
+  const userEmail = session?.user?.email;
+
+  if (!userId && !userEmail) {
     throw new Error('UNAUTHORIZED: Authentication required');
   }
 
-  const admin = await prisma.adminUser.findUnique({
-    where: { id: session.user.id },
+  const admin = await prisma.adminUser.findFirst({
+    where: userId ? { id: userId } : { email: userEmail! },
     select: {
       id: true,
       email: true,
