@@ -39,11 +39,13 @@ RUN adduser --system --uid 1001 nextjs
 
 RUN mkdir -p /app/public /app/uploads && chown -R nextjs:nodejs /app/uploads
 
-# Copy static assets and standalone server bundle
+# Copy static assets, standalone server bundle, node_modules, and prisma
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 USER nextjs
 
