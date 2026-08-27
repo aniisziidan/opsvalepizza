@@ -12,6 +12,7 @@ import type { NextAuthConfig } from 'next-auth';
  * `lib/auth.ts` and spreads this base in. See Step 8 in the Phase 1 plan.
  */
 export const authConfig = {
+  trustHost: true,
   session: { strategy: 'jwt' },
   pages: { signIn: '/admin/login' },
   // Providers are attached in lib/auth.ts (the Credentials provider needs

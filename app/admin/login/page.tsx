@@ -13,19 +13,28 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const res = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-      redirectTo: '/admin/dashboard',
-    });
-    setLoading(false);
-    if (res?.error) {
+
+    const callbackUrl =
+      new URLSearchParams(window.location.search).get('callbackUrl') ??
+      '/admin/dashboard';
+
+    try {
+      const res = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
+      setLoading(false);
+      if (!res?.ok) {
+        setError('Invalid email or password.');
+        return;
+      }
+      // On success, navigate to the original callback or the dashboard.
+      window.location.href = callbackUrl;
+    } catch {
+      setLoading(false);
       setError('Invalid email or password.');
-      return;
     }
-    // On success, follow the redirect target.
-    window.location.href = res?.url ?? '/admin/dashboard';
   }
 
   return (
