@@ -25,11 +25,18 @@ export const authConfig = {
       const isLoginPage = path === '/admin/login';
       const isAdminArea = path.startsWith('/admin');
 
-      // Allow the login page through unconditionally.
+      // If already logged in and visiting login page, redirect cleanly to dashboard
+      if (isLoginPage && isLoggedIn) {
+        return Response.redirect(new URL('/admin/dashboard', nextUrl));
+      }
+
+      // Allow the login page through for non-authenticated users
       if (isLoginPage) return true;
 
-      // Every other /admin/** route requires a session.
-      if (isAdminArea) return isLoggedIn;
+      // Every other /admin/** route requires a session -> clean redirect to login (no ugly query params)
+      if (isAdminArea && !isLoggedIn) {
+        return Response.redirect(new URL('/admin/login', nextUrl));
+      }
 
       return true;
     },

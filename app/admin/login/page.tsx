@@ -14,10 +14,6 @@ export default function AdminLoginPage() {
     setError('');
     setLoading(true);
 
-    const callbackUrl =
-      new URLSearchParams(window.location.search).get('callbackUrl') ??
-      '/admin/dashboard';
-
     try {
       const res = await signIn('credentials', {
         email,
@@ -29,8 +25,8 @@ export default function AdminLoginPage() {
         setError('Invalid email or password.');
         return;
       }
-      // On success, navigate to the original callback or the dashboard.
-      window.location.href = callbackUrl;
+      // On success, navigate cleanly to the dashboard.
+      window.location.href = '/admin/dashboard';
     } catch {
       setLoading(false);
       setError('Invalid email or password.');
