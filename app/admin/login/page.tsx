@@ -16,15 +16,17 @@ export default function AdminLoginPage() {
 
     try {
       const res = await signIn('credentials', {
-        email,
+        email: email.trim().toLowerCase(),
         password,
         redirect: false,
       });
       setLoading(false);
-      if (!res?.ok) {
+
+      if (!res || res.error || !res.ok || (res.url && res.url.includes('error='))) {
         setError('Invalid email or password.');
         return;
       }
+
       // On success, navigate cleanly to the dashboard.
       window.location.href = '/admin/dashboard';
     } catch {
