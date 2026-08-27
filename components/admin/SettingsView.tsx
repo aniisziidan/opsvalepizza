@@ -4,6 +4,7 @@ import React, { useState, useTransition } from 'react';
 import { AdminUserRow, AdminAuditLogRow, SystemDiagnosticsData } from '@/lib/admin/queries';
 import {
   createAdminUser,
+  updateAdminUser,
   updateAdminUserRole,
   toggleAdminUserActive,
   resetAdminPassword,
@@ -39,6 +40,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Modal 2: Reset Password
   const [resetTargetUser, setResetTargetUser] = useState<AdminUserRow | null>(null);
   const [resetPasswordVal, setResetPasswordVal] = useState('');
+
+  // Modal 3: Edit User Details (Name, Email, Role)
+  const [editTargetUser, setEditTargetUser] = useState<AdminUserRow | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState<Role>(Role.SALES);
+
+  const openEditModal = (u: AdminUserRow) => {
+    setEditTargetUser(u);
+    setEditName(u.name);
+    setEditEmail(u.email);
+    setEditRole(u.role);
+    setErrorMsg(null);
+  };
+
+  const handleEditUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTargetUser) return;
+
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    startTransition(async () => {
+      try {
+        await updateAdminUser(editTargetUser.id, {
+          name: editName,
+          email: editEmail,
+          role: editRole,
+        });
+        setEditTargetUser(null);
+        setSuccessMsg(`Administrator account for "${editName}" updated successfully.`);
+      } catch (err: any) {
+        setErrorMsg(err.message || 'Failed to update user');
+      }
+    });
+  };
 
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,15 +320,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </td>
                       <td className="py-3 px-4 text-[#75777e]">{formatDateTime(u.createdAt)}</td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => {
-                            setResetTargetUser(u);
-                            setResetPasswordVal('');
-                          }}
-                          className="text-[#041632] hover:text-[#e77114] font-bold text-[11px] cursor-pointer p-1 rounded hover:bg-[#eff4ff]"
-                        >
-                          Reset Password
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openEditModal(u)}
+                            className="text-[#041632] hover:text-[#e77114] font-bold text-[11px] cursor-pointer px-2 py-1 rounded hover:bg-[#eff4ff] flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-sm">edit</span>
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              setResetTargetUser(u);
+                              setResetPasswordVal('');
+                            }}
+                            className="text-[#75777e] hover:text-[#041632] font-bold text-[11px] cursor-pointer px-2 py-1 rounded hover:bg-[#eff4ff] flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-sm">key</span>
+                            Password
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -630,6 +677,82 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className="bg-[#e77114] text-white px-6 py-2.5 rounded-lg uppercase font-bold hover:bg-[#c25e10] cursor-pointer disabled:opacity-50"
                 >
                   Save New Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: EDIT ADMINISTRATOR (NAME, EMAIL, ROLE) */}
+      {editTargetUser && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-4">
+            <div className="flex justify-between items-center border-b border-[#c5c6ce] pb-3">
+              <h3 className="font-headline text-lg font-bold text-[#041632]">
+                Edit Administrator Details
+              </h3>
+              <button
+                onClick={() => setEditTargetUser(null)}
+                className="text-[#75777e] hover:text-[#041632] cursor-pointer"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleEditUser} className="space-y-4 font-mono-data text-xs">
+              <div>
+                <label className="block text-[#75777e] mb-1 font-semibold">Account Name / Username</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Anis Zidan"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-2.5 text-xs font-bold text-[#041632]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#75777e] mb-1 font-semibold">Email Address (Login Username)</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. admin@opsvale.com"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-2.5 text-xs text-[#041632]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#75777e] mb-1 font-semibold">Role Permission</label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as Role)}
+                  className="w-full bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-2.5 text-xs font-bold"
+                >
+                  <option value="SUPER_ADMIN">SUPER_ADMIN (Full Platform Authority)</option>
+                  <option value="SALES">SALES (Leads &amp; Quote Dispatch)</option>
+                  <option value="PRICING">PRICING (Landed Costs &amp; Margins)</option>
+                  <option value="VIEWER">VIEWER (Read-Only Access)</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditTargetUser(null)}
+                  className="px-4 py-2 border border-[#c5c6ce] rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || !editName.trim() || !editEmail.trim()}
+                  className="bg-[#041632] text-white px-6 py-2.5 rounded-lg uppercase font-bold hover:bg-[#1b2b48] cursor-pointer disabled:opacity-50"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

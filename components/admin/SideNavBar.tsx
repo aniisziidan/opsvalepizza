@@ -7,13 +7,26 @@ import { usePathname } from 'next/navigation';
 interface SideNavBarProps {
   newLeadsCount: number;
   draftQuotesCount?: number;
+  userName?: string;
+  userEmail?: string;
 }
 
 export const SideNavBar: React.FC<SideNavBarProps> = ({
   newLeadsCount,
   draftQuotesCount = 0,
+  userName = 'Admin',
+  userEmail = 'admin@opsvale.com',
 }) => {
   const pathname = usePathname();
+
+  // Compute initials (e.g. "Anis Zidan" -> "AZ")
+  const initials = userName
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'AD';
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard' },
@@ -63,11 +76,11 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
         {/* User Card */}
         <div className="p-4 mx-4 my-4 bg-[#1b2b48] rounded-lg border border-[#4f5e7e]/50 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-[#e3c290] text-[#041632] font-headline font-bold flex items-center justify-center text-sm shadow-inner flex-shrink-0">
-            SJ
+            {initials}
           </div>
           <div className="overflow-hidden">
-            <h4 className="font-body text-sm font-semibold text-white truncate">Sarah Jenkins</h4>
-            <p className="font-mono-data text-[11px] text-[#8393b5] truncate">Procurement Admin</p>
+            <h4 className="font-body text-sm font-semibold text-white truncate">{userName}</h4>
+            <p className="font-mono-data text-[11px] text-[#8393b5] truncate">{userEmail}</p>
           </div>
         </div>
 

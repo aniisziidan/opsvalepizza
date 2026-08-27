@@ -26,7 +26,12 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-row w-full selection:bg-[#ffdeac] selection:text-[#281900]">
-      <SideNavBar newLeadsCount={newLeadsCount} draftQuotesCount={draftQuotesCount} />
+      <SideNavBar
+        newLeadsCount={newLeadsCount}
+        draftQuotesCount={draftQuotesCount}
+        userName={session.user.name ?? 'Admin'}
+        userEmail={session.user.email ?? 'admin@opsvale.com'}
+      />
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <div className="flex items-center justify-end gap-3 px-6 py-3 border-b border-[#e2e4ef] bg-white">
           <span className="font-mono-data text-[11px] text-[#4f5e7e]">

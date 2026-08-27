@@ -17,6 +17,12 @@ const createUserSchema = z.object({
   role: z.nativeEnum(Role),
 });
 
+const updateAdminUserSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100).trim(),
+  email: z.string().email('Valid email address is required').trim().toLowerCase(),
+  role: z.nativeEnum(Role).optional(),
+});
+
 const updateRoleSchema = z.object({
   role: z.nativeEnum(Role),
 });
@@ -82,6 +88,78 @@ export async function createAdminUser(rawInput: unknown) {
 
   revalidatePath('/admin/settings');
   return { success: true, ...result };
+}
+
+/**
+ * Super admin or account owner updates administrator name, email, and role.
+ */
+export async function updateAdminUser(targetAdminId: string, rawInput: unknown) {
+  const currentAdmin = await requireAdmin();
+  const data = updateAdminUserSchema.parse(rawInput);
+
+  if (!targetAdminId || typeof targetAdminId !== 'string') {
+    throw new Error('Valid target admin ID is required');
+  }
+
+  // Non-super-admins can only update their own profile
+  if (currentAdmin.role !== 'SUPER_ADMIN' && currentAdmin.id !== targetAdminId) {
+    throw new Error('FORBIDDEN: You can only edit your own account');
+  }
+
+  // Check if new email is already in use by another admin
+  const existing = await prisma.adminUser.findFirst({
+    where: {
+      email: data.email,
+      id: { not: targetAdminId },
+    },
+  });
+
+  if (existing) {
+    throw new Error(`The email address "${data.email}" is already used by another administrator.`);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const targetUser = await tx.adminUser.findUnique({
+      where: { id: targetAdminId },
+    });
+
+    if (!targetUser) {
+      throw new Error('Target administrator not found');
+    }
+
+    const updatePayload: { name: string; email: string; role?: Role } = {
+      name: data.name,
+      email: data.email,
+    };
+
+    if (data.role && currentAdmin.role === 'SUPER_ADMIN') {
+      if (targetUser.id === currentAdmin.id && targetUser.role === 'SUPER_ADMIN' && data.role !== 'SUPER_ADMIN') {
+        throw new Error('Self-demotion protection: You cannot remove your own SUPER_ADMIN role.');
+      }
+      updatePayload.role = data.role;
+    }
+
+    await tx.adminUser.update({
+      where: { id: targetAdminId },
+      data: updatePayload,
+    });
+
+    if (data.role && data.role !== targetUser.role) {
+      await tx.adminAuditLog.create({
+        data: {
+          actorAdminId: currentAdmin.id,
+          targetAdminId: targetUser.id,
+          action: 'ADMIN_ROLE_CHANGED',
+          oldValue: { role: targetUser.role, name: targetUser.name, email: targetUser.email },
+          newValue: { role: data.role, name: data.name, email: data.email },
+        },
+      });
+    }
+  });
+
+  revalidatePath('/admin/settings');
+  revalidatePath('/admin');
+  return { success: true };
 }
 
 /**
