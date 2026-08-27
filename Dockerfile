@@ -2,6 +2,7 @@
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
+RUN mkdir -p /app/public /app/uploads
 
 # Stage 2: Dependencies
 FROM base AS deps
@@ -16,6 +17,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
 COPY . .
+RUN mkdir -p /app/public
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
@@ -34,6 +36,8 @@ ENV HOSTNAME="0.0.0.0"
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+
+RUN mkdir -p /app/public /app/uploads && chown -R nextjs:nodejs /app/uploads
 
 # Copy static assets and standalone server bundle
 COPY --from=builder /app/public ./public

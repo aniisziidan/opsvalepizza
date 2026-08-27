@@ -1,9 +1,8 @@
-{$DOMAIN:opsvale.eu} {
+:80, {$DOMAIN:opsvale.eu} {
     encode gzip zstd
 
     # Security Headers
     header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
