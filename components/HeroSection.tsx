@@ -136,7 +136,7 @@ export const HeroSection: React.FC = () => {
         }}
       />
 
-      <div className="relative z-10 max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 min-h-[640px] lg:min-h-[720px]">
+      <div className="relative z-10 w-full grid grid-cols-1 lg:grid-cols-12 min-h-[640px] lg:min-h-[720px]">
         {/* Left Side: 70% Transparent (30% overlay opacity) */}
         <div className="lg:col-span-7 relative p-6 sm:p-10 md:p-14 lg:p-16 flex flex-col justify-center bg-[#041632]/30 backdrop-blur-sm lg:border-r border-white/10">
           <div className="relative z-10 max-w-xl">
