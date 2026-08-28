@@ -583,8 +583,8 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead }) => {
                   <label className="block text-[#75777e] mb-1 font-semibold">Unit Price (€/pc)</label>
                   <input
                     type="number"
-                    step="0.0001"
-                    min="0.01"
+                    step="any"
+                    min="0.0001"
                     value={quotePrice}
                     onChange={(e) => setQuotePrice(e.target.value)}
                     className="w-full bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-2.5 font-bold text-sm text-[#041632]"
@@ -595,7 +595,7 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead }) => {
                   <input
                     type="number"
                     min="1"
-                    step="1000"
+                    step="1"
                     value={quoteQty}
                     onChange={(e) => setQuoteQty(parseInt(e.target.value) || 0)}
                     className="w-full bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-2.5 font-bold text-sm text-[#041632]"
