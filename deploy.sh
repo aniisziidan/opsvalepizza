@@ -10,6 +10,10 @@
 
 set -eo pipefail
 
+# Automatically resolve and change to project root directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 # Text colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
