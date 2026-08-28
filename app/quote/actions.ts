@@ -237,7 +237,23 @@ export async function submitQuoteRequest(
       // Step E: Create quote request
       const quoteMaterial = payload.material === 'white' ? 'WHITE' : 'KRAFT';
       const quotePrint = payload.printType === 'custom' ? 'PRINTED' : 'PLAIN';
-      const qtyPerOrder = Math.round(payload.monthlyVolume / 3) || 5000;
+      
+      // Calculate order batch size based on cadence or calculator override
+      let qtyPerOrder: number;
+      if (payload.calcState?.boxesPerOrder && payload.calcState.boxesPerOrder > 0) {
+        qtyPerOrder = Math.round(payload.calcState.boxesPerOrder);
+      } else {
+        const cadence = (payload.deliveryFrequency || '').toLowerCase();
+        if (cadence.includes('weekly') && !cadence.includes('bi-weekly') && !cadence.includes('biweekly')) {
+          qtyPerOrder = Math.max(1, Math.round(payload.monthlyVolume / 4));
+        } else if (cadence.includes('bi-weekly') || cadence.includes('biweekly')) {
+          qtyPerOrder = Math.max(1, Math.round(payload.monthlyVolume / 2));
+        } else if (cadence.includes('monthly') || cadence.includes('truckload')) {
+          qtyPerOrder = payload.monthlyVolume;
+        } else {
+          qtyPerOrder = Math.max(1, Math.round(payload.monthlyVolume / 2));
+        }
+      }
 
       const quoteRequest = await tx.quoteRequest.create({
         data: {
