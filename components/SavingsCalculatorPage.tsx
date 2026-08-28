@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalculatorState } from '@/lib/types';
 import { useTranslation } from '@/lib/i18n/context';
+import { trackCalculatorEvent, trackCtaClick } from '@/lib/analytics/tracker';
 
 interface SavingsCalculatorPageProps {
   initialVolume?: number;
@@ -110,6 +111,29 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
       const data = (await res.json()) as CalculatorApiResult;
       if (reqId !== requestIdRef.current) return;
       setResult(data);
+
+      if (data.available) {
+        trackCalculatorEvent('CALCULATOR_COMPLETED', {
+          boxSize,
+          material,
+          print,
+          boxesPerOrder,
+          monthlyVolume,
+          currentPrice,
+          estMinEur: data.priceRange.minEur,
+          estMaxEur: data.priceRange.maxEur,
+          estYearlySavings: data.savings.yearlyMax,
+        });
+      } else {
+        trackCalculatorEvent('CALCULATOR_USED', {
+          boxSize,
+          material,
+          print,
+          boxesPerOrder,
+          monthlyVolume,
+          currentPrice,
+        });
+      }
     } catch {
       if (reqId !== requestIdRef.current) return;
       setResult(null);
@@ -123,6 +147,10 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
       }
     }
   }, [country, boxSize, material, print, boxesPerOrder, monthlyVolume, currentPrice]);
+
+  useEffect(() => {
+    trackCalculatorEvent('CALCULATOR_OPENED', { source: 'calculator_page' });
+  }, []);
 
   const handleCalculate = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -145,6 +173,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
     result && result.available ? Math.round(result.savings.yearlyMax) : 0;
 
   const handleRequestQuote = () => {
+    trackCtaClick('REQUEST_EXACT_QUOTE', 'calculator', `/${locale}/quote`);
     const params = new URLSearchParams({
       country: currentCalcState.country,
       boxSize: currentCalcState.boxSize,

@@ -30,7 +30,8 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard' },
-    { id: 'analytics', label: 'Analytics & KPIs', icon: 'monitoring', href: '/admin/analytics' },
+    { id: 'visitors', label: 'Visitor Intelligence', icon: 'travel_explore', href: '/admin/visitors' },
+    { id: 'analytics', label: 'Pipeline & Sales KPIs', icon: 'monitoring', href: '/admin/analytics' },
     {
       id: 'leads',
       label: 'Leads',

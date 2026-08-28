@@ -664,6 +664,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         name: 'Security & Governance',
                         desc: 'Administrative permission changes, credential resets, and account audits.',
                       },
+                      ANALYTICS: {
+                        name: 'Visitor & Traffic Alerts',
+                        desc: 'Website traffic anomalies, market opportunity surges, and conversion drop-offs.',
+                      },
                     };
 
                     const info = categoryTitles[p.category] || { name: p.category, desc: '' };

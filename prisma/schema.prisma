@@ -541,6 +541,9 @@ enum NotificationType {
   EMAIL_DELIVERY_FAILED
   PDF_GENERATION_FAILED
   SYSTEM_RECOVERED
+  ANALYTICS_TRAFFIC_ANOMALY
+  ANALYTICS_CONVERSION_DROP
+  ANALYTICS_TRAFFIC_OPPORTUNITY
 }
 
 enum NotificationCategory {
@@ -551,6 +554,7 @@ enum NotificationCategory {
   LOGISTICS
   SYSTEM
   SECURITY
+  ANALYTICS
 }
 
 enum NotificationPriority {
@@ -559,5 +563,116 @@ enum NotificationPriority {
   NORMAL
   LOW
 }
+
+// ------------------------------------------------------------------------------
+// PHASE 9: VISITOR INTELLIGENCE & PRIVACY-AWARE ANALYTICS
+// ------------------------------------------------------------------------------
+
+model Visitor {
+  id             String           @id @default(cuid())
+  anonymousId    String           @unique
+  firstSeenAt    DateTime         @default(now())
+  lastSeenAt     DateTime         @default(now())
+  countryCode    String?
+  locale         String?
+  totalVisits    Int              @default(1)
+  quoteSubmitted Boolean          @default(false)
+  sessions       VisitorSession[]
+  events         AnalyticsEvent[]
+
+  @@index([lastSeenAt])
+  @@index([countryCode])
+  @@index([firstSeenAt])
+}
+
+model VisitorSession {
+  id              String            @id @default(cuid())
+  visitorId       String
+  visitor         Visitor           @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  sessionToken    String            @unique
+  startedAt       DateTime          @default(now())
+  endedAt         DateTime?
+  lastActivityAt  DateTime          @default(now())
+  durationSeconds Int               @default(0)
+  pageViewsCount  Int               @default(1)
+  entryPath       String
+  exitPath        String?
+  countryCode     String?
+  countryName     String?
+  locale          String?
+  trafficSource   TrafficSourceType @default(DIRECT)
+  referrerDomain  String?
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  utmTerm         String?
+  utmContent      String?
+  deviceType      DeviceType        @default(DESKTOP)
+  browser         String?
+  os              String?
+  isBounce        Boolean           @default(true)
+  events          AnalyticsEvent[]
+
+  @@index([startedAt])
+  @@index([lastActivityAt])
+  @@index([countryCode, startedAt])
+  @@index([trafficSource, startedAt])
+  @@index([visitorId, startedAt])
+  @@index([utmCampaign, startedAt])
+}
+
+model AnalyticsEvent {
+  id            String             @id @default(cuid())
+  visitorId     String?
+  visitor       Visitor?           @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  sessionId     String?
+  session       VisitorSession?    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  eventType     AnalyticsEventType
+  path          String
+  canonicalPath String
+  locale        String?
+  countryCode   String?
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+
+  @@index([createdAt])
+  @@index([eventType, createdAt])
+  @@index([canonicalPath, createdAt])
+  @@index([countryCode, createdAt])
+  @@index([visitorId, createdAt])
+  @@index([sessionId, createdAt])
+}
+
+enum AnalyticsEventType {
+  PAGE_VIEW
+  SESSION_START
+  CALCULATOR_OPENED
+  CALCULATOR_USED
+  CALCULATOR_COMPLETED
+  QUOTE_PAGE_OPENED
+  QUOTE_REQUEST_STARTED
+  QUOTE_REQUEST_SUBMITTED
+  PRODUCT_VIEWED
+  CTA_CLICKED
+  PROPOSAL_PAGE_VIEWED
+  PROPOSAL_ACCEPTED
+  FILE_DOWNLOAD
+}
+
+enum TrafficSourceType {
+  DIRECT
+  ORGANIC_SEARCH
+  REFERRAL
+  SOCIAL
+  PAID
+  OTHER
+}
+
+enum DeviceType {
+  DESKTOP
+  MOBILE
+  TABLET
+}
+
 
 

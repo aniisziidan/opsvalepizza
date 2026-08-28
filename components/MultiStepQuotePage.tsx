@@ -15,6 +15,7 @@ import {
 } from '@/lib/validation/quoteRequest';
 import { submitQuoteRequest } from '@/app/quote/actions';
 import { useTranslation } from '@/lib/i18n/context';
+import { trackQuoteEvent } from '@/lib/analytics/tracker';
 
 interface UploadedItem {
   token: string;
@@ -251,8 +252,21 @@ export const MultiStepQuotePage: React.FC<MultiStepQuotePageProps> = ({
     return true;
   };
 
+  useEffect(() => {
+    trackQuoteEvent('QUOTE_PAGE_OPENED', {
+      hasCalculatorSnapshot: Boolean(initialCalcState),
+    });
+  }, [initialCalcState]);
+
   const handleNext = () => {
     if (!validateStep(step)) return;
+    if (step === 1) {
+      trackQuoteEvent('QUOTE_REQUEST_STARTED', {
+        step: 1,
+        specificationType: specType,
+        boxSize: specType === 'STANDARD' ? standardSize : undefined,
+      });
+    }
     setStep((prev) => prev + 1);
   };
 
@@ -298,6 +312,14 @@ export const MultiStepQuotePage: React.FC<MultiStepQuotePageProps> = ({
     try {
       const res = await submitQuoteRequest(payload);
       if (res.success && res.leadCode) {
+        trackQuoteEvent('QUOTE_REQUEST_SUBMITTED', {
+          specificationType: specType,
+          boxSize: specType === 'STANDARD' ? standardSize : undefined,
+          quantity: monthlyVolume,
+          deliveryCountryCode: deliveryCountry,
+          deliveryCity,
+          hasFilesAttached: uploadedFiles.length > 0,
+        });
         setSubmittedLeadCode(res.leadCode);
         setIsSubmitted(true);
       } else {

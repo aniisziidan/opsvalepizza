@@ -6,6 +6,7 @@ import { I18nProvider } from '@/lib/i18n/context';
 import { TopNavBar } from '@/components/TopNavBar';
 import { Footer } from '@/components/Footer';
 import { CookieConsentBanner } from '@/components/CookieConsentBanner';
+import { VisitorAnalyticsProvider } from '@/components/analytics/VisitorAnalyticsProvider';
 
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));
@@ -62,6 +63,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
         </div>
       </div>
       <CookieConsentBanner />
+      <VisitorAnalyticsProvider />
     </I18nProvider>
   );
 }

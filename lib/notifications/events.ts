@@ -106,6 +106,21 @@ export interface SystemAlertEvent extends BaseNotificationEvent {
   metadata?: Record<string, any>;
 }
 
+export interface AnalyticsAlertEvent extends BaseNotificationEvent {
+  type:
+    | 'ANALYTICS_TRAFFIC_ANOMALY'
+    | 'ANALYTICS_CONVERSION_DROP'
+    | 'ANALYTICS_TRAFFIC_OPPORTUNITY';
+  category: 'ANALYTICS';
+  priority?: 'HIGH' | 'NORMAL';
+  metadata?: {
+    metric?: string;
+    changePct?: number;
+    territory?: string;
+    campaign?: string;
+  };
+}
+
 export type NotificationEvent =
   | CustomerReplyEvent
   | ProposalAcceptedEvent
@@ -113,4 +128,5 @@ export type NotificationEvent =
   | QuoteRequestReceivedEvent
   | DocumentUploadedEvent
   | SystemAlertEvent
+  | AnalyticsAlertEvent
   | BaseNotificationEvent;
