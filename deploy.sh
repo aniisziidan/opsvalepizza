@@ -110,6 +110,13 @@ if [ ! -f ".env.production" ]; then
     fi
 fi
 
+# Ensure Resend API Key is configured for live customer email delivery
+if ! grep -q "RESEND_API_KEY=" .env.production 2>/dev/null; then
+    log_info "Adding Resend configuration placeholders to .env.production..."
+    echo 'RESEND_API_KEY=""' >> .env.production
+    echo 'EMAIL_FROM="\"OpsVale Customer Service\" <customerservice@opsvale.com>"' >> .env.production
+fi
+
 # 4. Build application container
 log_info "Building application Docker container (${APP_CONTAINER})..."
 $DOCKER_COMPOSE -f $COMPOSE_FILE build app

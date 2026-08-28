@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import { buildQuoteProposalEmail } from '@/lib/email/sendQuoteProposal';
 import { processOutboxEmail } from '@/lib/email/outbox';
 import { formatBoxSpec } from '@/lib/admin/formatters';
+import { DEFAULT_FROM_EMAIL } from '@/lib/email/transporter';
 
 const quoteInputSchema = z.object({
   unitPriceEur: z
@@ -289,7 +290,7 @@ export async function dispatchQuote(quoteId: string) {
       data: {
         quoteId: quote.id,
         to: lead.contact.email,
-        from: `"OpsVale Logistics" <${process.env.SMTP_USER || 'no-reply@opsvale.com'}>`,
+        from: DEFAULT_FROM_EMAIL,
         subject: emailContent.subject,
         text: emailContent.text,
         html: emailContent.html,

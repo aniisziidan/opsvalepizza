@@ -1,4 +1,4 @@
-import { emailSender } from './transporter';
+import { emailSender, DEFAULT_FROM_EMAIL } from './transporter';
 
 export interface NewQuoteNotificationInput {
   leadCode: string;
@@ -96,7 +96,7 @@ ${adminLeadUrl}
 `.trim();
 
   await emailSender.sendMail({
-    from: `"OpsVale Logistics" <${process.env.SMTP_USER || 'no-reply@opsvale.com'}>`,
+    from: DEFAULT_FROM_EMAIL,
     to: recipient,
     subject,
     text: textContent,

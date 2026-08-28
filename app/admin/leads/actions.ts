@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 import { LeadStatus, LEAD_STATUS_LABEL } from '@/lib/types';
-import { emailSender } from '@/lib/email/transporter';
+import { emailSender, DEFAULT_FROM_EMAIL } from '@/lib/email/transporter';
 
 const updateStatusSchema = z.object({
   leadId: z.string().min(1, 'Lead ID is required'),
@@ -158,7 +158,7 @@ export async function sendDirectLeadEmail(rawLeadId: string, payload: { subject:
 
   // 1. Transmit email via email sender
   const sendRes = await emailSender.sendMail({
-    from: `"OpsVale Logistics" <${process.env.SMTP_USER || 'no-reply@opsvale.com'}>`,
+    from: DEFAULT_FROM_EMAIL,
     to: lead.contact.email,
     subject,
     text: body,
