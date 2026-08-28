@@ -12,6 +12,7 @@ import { matchOrCreateCompany } from '@/lib/companies/matchOrCreateCompany';
 import { resolvePublicRange } from '@/lib/pricing/publicRange';
 import { computeSavings } from '@/lib/calculator/savings';
 import { notifyNewQuote } from '@/lib/email/notifyNewQuote';
+import { emitNotificationEvent } from '@/lib/notifications/dispatcher';
 
 export interface SubmitQuoteResult {
   success: boolean;
@@ -362,6 +363,42 @@ export async function submitQuoteRequest(
       hasFiles: uniqueUploadTokens.length > 0,
       notes: payload.notes,
     });
+
+    // Centralized notification event: New Quote Request
+    emitNotificationEvent({
+      type: 'QUOTE_REQUEST_RECEIVED',
+      category: 'CUSTOMER_ACTIVITY',
+      priority: 'HIGH',
+      title: `New Quote Request: ${payload.companyName}`,
+      message: `${payload.fullName} submitted a quote request for ${payload.monthlyVolume.toLocaleString()} boxes/mo (${payload.deliveryCity}, ${payload.deliveryCountry}).`,
+      entityType: 'LEAD',
+      entityId: leadCode,
+      actionUrl: `/admin/leads`,
+      metadata: {
+        leadCode,
+        companyName: payload.companyName,
+        contactName: payload.fullName,
+        email: payload.workEmail,
+        boxSpec: boxSpecDescription,
+        monthlyVolume: payload.monthlyVolume,
+        city: payload.deliveryCity,
+        countryCode: payload.deliveryCountry,
+      },
+    }).catch((err) => console.error('Failed to emit QUOTE_REQUEST_RECEIVED event:', err));
+
+    // Centralized notification event: Document Uploaded
+    if (uniqueUploadTokens.length > 0) {
+      emitNotificationEvent({
+        type: 'DOCUMENT_UPLOADED',
+        category: 'CUSTOMER_ACTIVITY',
+        priority: 'NORMAL',
+        title: `Documents Attached: ${payload.companyName}`,
+        message: `${uniqueUploadTokens.length} file(s) attached to Quote Request ${leadCode}.`,
+        entityType: 'LEAD',
+        entityId: leadCode,
+        actionUrl: `/admin/leads`,
+      }).catch((err) => console.error('Failed to emit DOCUMENT_UPLOADED event:', err));
+    }
   } catch (emailError) {
     console.error('Failed to dispatch quote notification email:', emailError);
   }

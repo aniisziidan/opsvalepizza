@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { QuoteStatus } from '@prisma/client';
 import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from '@/lib/legal/config';
+import { emitNotificationEvent } from '@/lib/notifications/dispatcher';
 
 export interface CustomerProposalDTO {
   id: string;
@@ -134,7 +135,7 @@ export async function acceptProposal(token: string, rawInput: unknown = {}) {
   const data = acceptSchema.parse(rawInput);
   const now = new Date();
 
-  await prisma.$transaction(async (tx) => {
+  const acceptRes = await prisma.$transaction(async (tx) => {
     // 1. Atomic update of Quote status
     const updateRes = await tx.quote.updateMany({
       where: {
@@ -161,7 +162,15 @@ export async function acceptProposal(token: string, rawInput: unknown = {}) {
     }
 
     // 2. Advance Lead status to WON
-    const quote = await tx.quote.findUniqueOrThrow({ where: { accessToken: token } });
+    const quote = await tx.quote.findUniqueOrThrow({
+      where: { accessToken: token },
+      include: {
+        lead: {
+          include: { company: true, contact: true },
+        },
+      },
+    });
+
     await tx.lead.update({
       where: { id: quote.leadId },
       data: { status: 'WON' },
@@ -177,7 +186,32 @@ export async function acceptProposal(token: string, rawInput: unknown = {}) {
         }`,
       },
     });
+
+    return { quote };
   });
+
+  // Emit event to centralized notification system
+  emitNotificationEvent({
+    type: 'PROPOSAL_ACCEPTED',
+    category: 'PROPOSAL',
+    priority: 'HIGH',
+    title: `Proposal Accepted: ${acceptRes.quote.lead.company.name}`,
+    message: `${acceptRes.quote.lead.contact.name} accepted Quote Rev ${acceptRes.quote.revision} (€${(Number(acceptRes.quote.unitPriceEur) * acceptRes.quote.qty).toLocaleString('en-US', { minimumFractionDigits: 2 })}).`,
+    entityType: 'QUOTE',
+    entityId: acceptRes.quote.id,
+    actionUrl: `/admin/leads/${acceptRes.quote.leadId}`,
+    metadata: {
+      leadId: acceptRes.quote.leadId,
+      leadCode: acceptRes.quote.lead.code,
+      companyName: acceptRes.quote.lead.company.name,
+      contactName: acceptRes.quote.lead.contact.name,
+      revision: acceptRes.quote.revision,
+      orderQuantity: acceptRes.quote.qty,
+      unitPriceEur: acceptRes.quote.unitPriceEur.toString(),
+      totalEur: (Number(acceptRes.quote.unitPriceEur) * acceptRes.quote.qty).toFixed(2),
+      customerNotes: data.customerNotes,
+    },
+  }).catch((err) => console.error('Failed to emit PROPOSAL_ACCEPTED event:', err));
 
   revalidatePath(`/proposals/${token}`);
   revalidatePath('/admin');
@@ -198,8 +232,15 @@ export async function requestProposalModification(token: string, rawInput: unkno
   const data = modificationSchema.parse(rawInput);
   const now = new Date();
 
-  await prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { accessToken: token } });
+  const modifyRes = await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { accessToken: token },
+      include: {
+        lead: {
+          include: { company: true, contact: true },
+        },
+      },
+    });
 
     if (!quote) throw new Error('Proposal not found');
     if (quote.status === 'SUPERSEDED') throw new Error('This proposal has been superseded by a newer revision.');
@@ -223,7 +264,29 @@ export async function requestProposalModification(token: string, rawInput: unkno
         content: `Customer requested quotation adjustments on Rev ${quote.revision}: "${data.message}"`,
       },
     });
+
+    return { quote };
   });
+
+  // Emit event to centralized notification system
+  emitNotificationEvent({
+    type: 'CUSTOMER_REPLY_RECEIVED',
+    category: 'CUSTOMER_ACTIVITY',
+    priority: 'HIGH',
+    title: `Customer Reply: ${modifyRes.quote.lead.company.name}`,
+    message: `${modifyRes.quote.lead.contact.name} requested adjustment on Rev ${modifyRes.quote.revision}: "${data.message.slice(0, 80)}${data.message.length > 80 ? '...' : ''}"`,
+    entityType: 'PROPOSAL',
+    entityId: modifyRes.quote.id,
+    actionUrl: `/admin/leads/${modifyRes.quote.leadId}`,
+    metadata: {
+      leadId: modifyRes.quote.leadId,
+      leadCode: modifyRes.quote.lead.code,
+      companyName: modifyRes.quote.lead.company.name,
+      contactName: modifyRes.quote.lead.contact.name,
+      revision: modifyRes.quote.revision,
+      customerNotes: data.message,
+    },
+  }).catch((err) => console.error('Failed to emit CUSTOMER_REPLY_RECEIVED event:', err));
 
   revalidatePath(`/proposals/${token}`);
   revalidatePath('/admin');
@@ -244,7 +307,7 @@ export async function declineProposal(token: string, rawInput: unknown = {}) {
   const data = declineSchema.parse(rawInput);
   const now = new Date();
 
-  await prisma.$transaction(async (tx) => {
+  const declineRes = await prisma.$transaction(async (tx) => {
     const updateRes = await tx.quote.updateMany({
       where: {
         accessToken: token,
@@ -265,7 +328,14 @@ export async function declineProposal(token: string, rawInput: unknown = {}) {
       throw new Error(`Proposal is not in an actionable state (${q.status}).`);
     }
 
-    const quote = await tx.quote.findUniqueOrThrow({ where: { accessToken: token } });
+    const quote = await tx.quote.findUniqueOrThrow({
+      where: { accessToken: token },
+      include: {
+        lead: {
+          include: { company: true, contact: true },
+        },
+      },
+    });
 
     // Advance Lead status to LOST
     await tx.lead.update({
@@ -283,7 +353,29 @@ export async function declineProposal(token: string, rawInput: unknown = {}) {
         }`,
       },
     });
+
+    return { quote };
   });
+
+  // Emit event to centralized notification system
+  emitNotificationEvent({
+    type: 'PROPOSAL_REJECTED',
+    category: 'PROPOSAL',
+    priority: 'NORMAL',
+    title: `Proposal Declined: ${declineRes.quote.lead.company.name}`,
+    message: `${declineRes.quote.lead.contact.name} declined Quote Rev ${declineRes.quote.revision}${data.reason ? ` (${data.reason})` : ''}.`,
+    entityType: 'PROPOSAL',
+    entityId: declineRes.quote.id,
+    actionUrl: `/admin/leads/${declineRes.quote.leadId}`,
+    metadata: {
+      leadId: declineRes.quote.leadId,
+      leadCode: declineRes.quote.lead.code,
+      companyName: declineRes.quote.lead.company.name,
+      contactName: declineRes.quote.lead.contact.name,
+      revision: declineRes.quote.revision,
+      reason: data.reason,
+    },
+  }).catch((err) => console.error('Failed to emit PROPOSAL_REJECTED event:', err));
 
   revalidatePath(`/proposals/${token}`);
   revalidatePath('/admin');

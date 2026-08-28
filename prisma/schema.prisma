@@ -15,10 +15,13 @@ model AdminUser {
   role             Role              @default(SUPER_ADMIN)
   active           Boolean           @default(true)
   createdAt        DateTime          @default(now())
-  activities       LeadActivity[]
-  pricingAuditLogs PricingAuditLog[]
-  actorAuditLogs   AdminAuditLog[]   @relation("ActorAdminLogs")
-  targetAuditLogs  AdminAuditLog[]   @relation("TargetAdminLogs")
+  activities        LeadActivity[]
+  pricingAuditLogs  PricingAuditLog[]
+  actorAuditLogs    AdminAuditLog[]          @relation("ActorAdminLogs")
+  targetAuditLogs   AdminAuditLog[]          @relation("TargetAdminLogs")
+  notifications     Notification[]
+  preferences       NotificationPreference[]
+  pushSubscriptions PushSubscription[]
 }
 
 enum Role {
@@ -453,4 +456,108 @@ model AdminAuditLog {
   @@index([actorAdminId])
   @@index([createdAt])
 }
+
+model Notification {
+  id         String               @id @default(cuid())
+  userId     String?
+  user       AdminUser?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  category   NotificationCategory
+  priority   NotificationPriority @default(NORMAL)
+  title      String
+  message    String
+  entityType String?
+  entityId   String?
+  actionUrl  String?
+  metadata   Json?
+  readAt     DateTime?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@index([userId, readAt, createdAt])
+  @@index([category, priority])
+  @@index([entityType, entityId])
+}
+
+model NotificationPreference {
+  id          String               @id @default(cuid())
+  userId      String
+  user        AdminUser            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    NotificationCategory
+  inApp       Boolean              @default(true)
+  browserPush Boolean              @default(true)
+  email       Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([userId, category])
+  @@index([userId])
+}
+
+model PushSubscription {
+  id         String     @id @default(cuid())
+  userId     String
+  user       AdminUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String     @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  lastUsedAt DateTime?
+
+  @@index([userId])
+}
+
+model SystemIncident {
+  id          String    @id @default(cuid())
+  incidentKey String    @unique
+  title       String
+  lastAlertAt DateTime  @default(now())
+  count       Int       @default(1)
+  resolved    Boolean   @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([incidentKey, resolved])
+}
+
+enum NotificationType {
+  CUSTOMER_REPLY_RECEIVED
+  QUOTE_REQUEST_RECEIVED
+  PROPOSAL_ACCEPTED
+  PROPOSAL_REJECTED
+  PROPOSAL_EXPIRING
+  PROPOSAL_EXPIRED
+  DOCUMENT_UPLOADED
+  PRICING_IMPORT_COMPLETED
+  PRICING_IMPORT_FAILED
+  PRICING_VERSION_CONFLICT
+  LOGISTICS_CONFIGURATION_ALERT
+  SYSTEM_HEALTH_ALERT
+  DATABASE_UNAVAILABLE
+  BACKUP_FAILED
+  EMAIL_DELIVERY_FAILED
+  PDF_GENERATION_FAILED
+  SYSTEM_RECOVERED
+}
+
+enum NotificationCategory {
+  CUSTOMER_ACTIVITY
+  PROPOSAL
+  QUOTE
+  PRICING
+  LOGISTICS
+  SYSTEM
+  SECURITY
+}
+
+enum NotificationPriority {
+  CRITICAL
+  HIGH
+  NORMAL
+  LOW
+}
+
 

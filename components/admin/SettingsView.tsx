@@ -9,14 +9,38 @@ import {
   toggleAdminUserActive,
   resetAdminPassword,
 } from '@/app/admin/settings/actions';
-import { Role, AdminAuditAction } from '@prisma/client';
+import { Role, AdminAuditAction, NotificationCategory } from '@prisma/client';
 import { formatDateTime, timeAgo } from '@/lib/admin/formatters';
+import {
+  registerPushSubscriptionAction,
+  removePushSubscriptionAction,
+  updateNotificationPreferencesAction,
+} from '@/lib/notifications/actions';
+
+interface PreferenceState {
+  category: NotificationCategory;
+  inApp: boolean;
+  browserPush: boolean;
+  email: boolean;
+}
 
 interface SettingsViewProps {
   currentAdminEmail: string;
   adminUsers: AdminUserRow[];
   auditLogs: AdminAuditLogRow[];
   diagnostics: SystemDiagnosticsData;
+  initialPreferences?: PreferenceState[];
+}
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -24,11 +48,143 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   adminUsers,
   auditLogs,
   diagnostics,
+  initialPreferences = [],
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'audit' | 'diagnostics'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'notifications' | 'audit' | 'diagnostics'>('users');
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Notification Preferences State
+  const ALL_CATEGORIES: NotificationCategory[] = [
+    'CUSTOMER_ACTIVITY',
+    'PROPOSAL',
+    'QUOTE',
+    'PRICING',
+    'LOGISTICS',
+    'SYSTEM',
+  ];
+
+  const defaultPreferences: PreferenceState[] = ALL_CATEGORIES.map((cat) => {
+    const existing = initialPreferences.find((p) => p.category === cat);
+    return {
+      category: cat,
+      inApp: existing ? existing.inApp : true,
+      browserPush: existing ? existing.browserPush : true,
+      email: existing ? existing.email : cat === 'PROPOSAL' || cat === 'SYSTEM',
+    };
+  });
+
+  const [preferences, setPreferences] = useState<PreferenceState[]>(defaultPreferences);
+  const [pushStatus, setPushStatus] = useState<'checking' | 'granted' | 'denied' | 'default' | 'unsupported'>('checking');
+  const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      setPushStatus('unsupported');
+      return;
+    }
+
+    setPushStatus(Notification.permission as any);
+
+    navigator.serviceWorker.ready
+      .then(async (registration) => {
+        const sub = await registration.pushManager.getSubscription();
+        setIsPushSubscribed(Boolean(sub));
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleTogglePush = async () => {
+    if (pushStatus === 'unsupported') {
+      alert('Browser Push notifications are not supported on this browser/device.');
+      return;
+    }
+
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      if (isPushSubscribed) {
+        const registration = await navigator.serviceWorker.ready;
+        const sub = await registration.pushManager.getSubscription();
+        if (sub) {
+          await sub.unsubscribe();
+          await removePushSubscriptionAction(sub.endpoint);
+        }
+        setIsPushSubscribed(false);
+        setSuccessMsg('Browser push notifications deactivated for this device.');
+      } else {
+        const permission = await Notification.requestPermission();
+        setPushStatus(permission as any);
+
+        if (permission !== 'granted') {
+          setErrorMsg('Notification permission was not granted. Please allow notifications in your browser settings.');
+          return;
+        }
+
+        const vapidRes = await fetch('/api/admin/push/vapid-key');
+        if (!vapidRes.ok) throw new Error('Failed to retrieve VAPID public key');
+        const vapidData = await vapidRes.json();
+
+        if (!vapidData.publicKey) {
+          setErrorMsg('VAPID public key is not configured on the server. Please set NEXT_PUBLIC_VAPID_PUBLIC_KEY in your environment.');
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+
+        const convertedKey = urlBase64ToUint8Array(vapidData.publicKey);
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedKey,
+        });
+
+        const subJson = subscription.toJSON();
+        if (!subJson.endpoint || !subJson.keys?.p256dh || !subJson.keys?.auth) {
+          throw new Error('Invalid push subscription keys returned by browser.');
+        }
+
+        await registerPushSubscriptionAction({
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys.p256dh,
+          auth: subJson.keys.auth,
+          userAgent: navigator.userAgent,
+        });
+
+        setIsPushSubscribed(true);
+        setSuccessMsg('Browser push notifications activated successfully!');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to configure push notifications');
+    }
+  };
+
+  const handlePreferenceChange = (
+    category: NotificationCategory,
+    channel: 'inApp' | 'browserPush' | 'email',
+    value: boolean
+  ) => {
+    setPreferences((prev) =>
+      prev.map((p) => (p.category === category ? { ...p, [channel]: value } : p))
+    );
+  };
+
+  const handleSavePreferences = () => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    startTransition(async () => {
+      try {
+        await updateNotificationPreferencesAction(preferences);
+        setSuccessMsg('Notification preferences updated successfully.');
+      } catch (err: any) {
+        setErrorMsg(err.message || 'Failed to save notification preferences');
+      }
+    });
+  };
 
   // Modal 1: Create User
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -236,6 +392,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </button>
 
         <button
+          onClick={() => setActiveTab('notifications')}
+          className={`pb-3 px-4 flex items-center gap-2 border-b-2 cursor-pointer transition-colors ${
+            activeTab === 'notifications'
+              ? 'border-[#041632] text-[#041632]'
+              : 'border-transparent text-[#75777e] hover:text-[#041632]'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base">notifications_active</span>
+          Notifications &amp; Browser Push
+        </button>
+
+        <button
           onClick={() => setActiveTab('audit')}
           className={`pb-3 px-4 flex items-center gap-2 border-b-2 cursor-pointer transition-colors ${
             activeTab === 'audit'
@@ -349,7 +517,210 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* TAB 2: AUDIT TRAIL */}
+      {/* TAB 2: NOTIFICATIONS & BROWSER PUSH */}
+      {activeTab === 'notifications' && (
+        <div className="space-y-6 font-mono-data text-xs">
+          {/* Section 1: Browser Push Notifications */}
+          <div className="bg-white border border-[#c5c6ce] rounded-xl p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#e2e4ef] pb-4">
+              <div>
+                <div className="flex items-center gap-2 text-[#e77114] mb-1">
+                  <span className="material-symbols-outlined">notifications_active</span>
+                  <h3 className="font-headline text-base font-bold text-[#041632]">
+                    Browser Web Push Notifications
+                  </h3>
+                </div>
+                <p className="text-[#44474d] text-xs font-body">
+                  Receive instant desktop &amp; mobile alerts for critical customer responses and operational failures, even when the OpsVale portal is closed.
+                </p>
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={handleTogglePush}
+                  disabled={isPending || pushStatus === 'unsupported'}
+                  className={`px-4 py-2.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-2 shadow-xs disabled:opacity-50 ${
+                    isPushSubscribed
+                      ? 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'
+                      : 'bg-[#e77114] hover:bg-[#c25e10] text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">
+                    {isPushSubscribed ? 'notifications_off' : 'notifications'}
+                  </span>
+                  <span>{isPushSubscribed ? 'Disable on This Device' : 'Enable Browser Push'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Status Information Box */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 text-xs">
+              <div className="bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-3">
+                <span className="text-[#75777e] text-[10px] uppercase font-bold block mb-1">
+                  Browser Permission
+                </span>
+                <span
+                  className={`font-bold capitalize ${
+                    pushStatus === 'granted'
+                      ? 'text-emerald-700'
+                      : pushStatus === 'denied'
+                      ? 'text-red-700'
+                      : 'text-amber-700'
+                  }`}
+                >
+                  {pushStatus}
+                </span>
+              </div>
+
+              <div className="bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-3">
+                <span className="text-[#75777e] text-[10px] uppercase font-bold block mb-1">
+                  Device Subscription
+                </span>
+                <span className={`font-bold ${isPushSubscribed ? 'text-emerald-700' : 'text-gray-500'}`}>
+                  {isPushSubscribed ? 'Active & Subscribed' : 'Not Subscribed'}
+                </span>
+              </div>
+
+              <div className="bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-3">
+                <span className="text-[#75777e] text-[10px] uppercase font-bold block mb-1">
+                  Standards Protocol
+                </span>
+                <span className="font-bold text-[#041632]">VAPID / Web Push RFC 8291</span>
+              </div>
+            </div>
+
+            {pushStatus === 'denied' && (
+              <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3 rounded-lg flex items-center gap-2 text-xs">
+                <span className="material-symbols-outlined text-base text-amber-600 flex-shrink-0">info</span>
+                <span>
+                  Notifications are blocked by your browser settings. To enable, click the lock icon in your address bar and allow Notifications.
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Channel Preference Matrix */}
+          <div className="bg-white border border-[#c5c6ce] rounded-xl shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-[#c5c6ce] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h3 className="font-headline text-base font-bold text-[#041632]">
+                  Notification Delivery Preferences
+                </h3>
+                <p className="text-[#44474d] text-xs font-body mt-0.5">
+                  Customize which communication channels receive alerts for each category.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSavePreferences}
+                disabled={isPending}
+                className="bg-[#041632] hover:bg-[#1b2b48] text-white px-5 py-2 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2 shadow-xs"
+              >
+                <span className="material-symbols-outlined text-base text-[#ffdeac]">save</span>
+                Save Preferences
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-mono-data text-xs">
+                <thead className="bg-[#f8f9ff] border-b border-[#c5c6ce] text-[#75777e] text-[11px] uppercase">
+                  <tr>
+                    <th className="py-3 px-4">Event Category &amp; Scope</th>
+                    <th className="py-3 px-4 text-center">In-App Bell</th>
+                    <th className="py-3 px-4 text-center">Browser Push</th>
+                    <th className="py-3 px-4 text-center">Email Alert</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#c5c6ce]/50">
+                  {preferences.map((p) => {
+                    const categoryTitles: Record<NotificationCategory, { name: string; desc: string }> = {
+                      CUSTOMER_ACTIVITY: {
+                        name: 'Customer Activity',
+                        desc: 'Client replies, modification requests, document uploads, and inquiry messages.',
+                      },
+                      PROPOSAL: {
+                        name: 'Commercial Proposals',
+                        desc: 'Proposal acceptance confirmations, PO notes, rejections, and expiry warnings.',
+                      },
+                      QUOTE: {
+                        name: 'Inbound Quote Requests',
+                        desc: 'New wholesale packaging inquiries submitted via public website.',
+                      },
+                      PRICING: {
+                        name: 'Pricing & Margins',
+                        desc: 'Excel pricing imports, version updates, and bulk concurrency conflicts.',
+                      },
+                      LOGISTICS: {
+                        name: 'Logistics & Hubs',
+                        desc: 'Logistics cost changes, hub route adjustments, and SLA warnings.',
+                      },
+                      SYSTEM: {
+                        name: 'System & Health Alerts',
+                        desc: 'Database connectivity issues, health check anomalies, and outbox email retry failures.',
+                      },
+                      SECURITY: {
+                        name: 'Security & Governance',
+                        desc: 'Administrative permission changes, credential resets, and account audits.',
+                      },
+                    };
+
+                    const info = categoryTitles[p.category] || { name: p.category, desc: '' };
+
+                    return (
+                      <tr key={p.category} className="hover:bg-[#f8f9ff]">
+                        <td className="py-3.5 px-4">
+                          <strong className="text-[#041632] block text-xs">{info.name}</strong>
+                          <span className="text-[#75777e] text-[11px] font-body block">{info.desc}</span>
+                        </td>
+
+                        {/* In-App */}
+                        <td className="py-3.5 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={p.inApp}
+                            onChange={(e) =>
+                              handlePreferenceChange(p.category, 'inApp', e.target.checked)
+                            }
+                            className="w-4 h-4 text-[#e77114] rounded border-[#c5c6ce] focus:ring-[#e77114] cursor-pointer"
+                          />
+                        </td>
+
+                        {/* Browser Push */}
+                        <td className="py-3.5 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={p.browserPush}
+                            onChange={(e) =>
+                              handlePreferenceChange(p.category, 'browserPush', e.target.checked)
+                            }
+                            className="w-4 h-4 text-[#e77114] rounded border-[#c5c6ce] focus:ring-[#e77114] cursor-pointer"
+                          />
+                        </td>
+
+                        {/* Email */}
+                        <td className="py-3.5 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={p.email}
+                            onChange={(e) =>
+                              handlePreferenceChange(p.category, 'email', e.target.checked)
+                            }
+                            className="w-4 h-4 text-[#e77114] rounded border-[#c5c6ce] focus:ring-[#e77114] cursor-pointer"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: AUDIT TRAIL */}
       {activeTab === 'audit' && (
         <div className="bg-white border border-[#c5c6ce] rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">

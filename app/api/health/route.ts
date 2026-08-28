@@ -29,10 +29,38 @@ export async function GET() {
     storageStatus = 'down';
   }
 
+  const isHealthy = dbStatus === 'up';
+
+  // System incident alert / recovery emission
+  try {
+    const { emitNotificationEvent } = await import('@/lib/notifications/dispatcher');
+    if (!isHealthy) {
+      emitNotificationEvent({
+        type: 'DATABASE_UNAVAILABLE',
+        category: 'SYSTEM',
+        priority: 'CRITICAL',
+        incidentKey: 'db_health_failure',
+        title: 'Database Unavailable / High Latency',
+        message: 'Health probe detected database connectivity failure.',
+        actionUrl: '/admin/dashboard',
+      }).catch(() => {});
+    } else {
+      emitNotificationEvent({
+        type: 'SYSTEM_RECOVERED',
+        category: 'SYSTEM',
+        priority: 'NORMAL',
+        incidentKey: 'db_health_failure',
+        title: 'Database Connectivity Restored',
+        message: `Health probe confirmed database is online (Latency: ${dbLatencyMs}ms).`,
+        actionUrl: '/admin/dashboard',
+      }).catch(() => {});
+    }
+  } catch {
+    // Non-blocking for probe
+  }
+
   const memoryUsage = process.memoryUsage();
   const uptimeSeconds = Math.floor(process.uptime());
-
-  const isHealthy = dbStatus === 'up';
 
   const responseBody = {
     status: isHealthy ? 'healthy' : 'degraded',

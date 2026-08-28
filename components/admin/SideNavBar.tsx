@@ -48,6 +48,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
     },
     { id: 'pricing', label: 'Pricing Engine', icon: 'monetization_on', href: '/admin/pricing' },
     { id: 'logistics', label: 'Logistics Hubs', icon: 'local_shipping', href: '/admin/logistics' },
+    { id: 'notifications', label: 'Notifications', icon: 'notifications', href: '/admin/notifications' },
     { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings' },
   ];
 

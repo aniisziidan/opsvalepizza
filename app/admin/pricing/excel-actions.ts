@@ -12,6 +12,7 @@ import {
   ImportMode,
 } from '@/lib/excel/types';
 import { Prisma, PricingAuditAction, PricingEntityType, CostSource } from '@prisma/client';
+import { emitNotificationEvent } from '@/lib/notifications/dispatcher';
 
 /**
  * Server action to parse and diff an uploaded Excel workbook with mode and version conflict checks.
@@ -358,6 +359,16 @@ export async function commitBulkPricingChanges(
   revalidatePath('/admin/pricing');
   revalidatePath('/admin/dashboard');
   revalidatePath('/calculator');
+
+  emitNotificationEvent({
+    type: 'PRICING_IMPORT_COMPLETED',
+    category: 'PRICING',
+    priority: 'NORMAL',
+    title: `Pricing Import Applied (${result.totalAudited} updates)`,
+    message: `${admin.name || admin.email} committed ${result.totalAudited} pricing updates (${result.landedCostsCreated} landed costs, ${result.pricingRulesCreated} rules).`,
+    entityType: 'PRICING',
+    actionUrl: '/admin/pricing',
+  }).catch(() => {});
 
   return {
     success: true,

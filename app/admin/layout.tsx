@@ -1,5 +1,6 @@
 import React from 'react';
 import { SideNavBar } from '@/components/admin/SideNavBar';
+import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
 import { auth, signOut } from '@/lib/auth';
 import { getNewLeadsCount, getDraftQuotesCount } from '@/lib/admin/queries';
 
@@ -33,7 +34,9 @@ export default async function AdminLayout({
         userEmail={session.user.email ?? 'admin@opsvale.com'}
       />
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <div className="flex items-center justify-end gap-3 px-6 py-3 border-b border-[#e2e4ef] bg-white">
+        <div className="flex items-center justify-end gap-4 px-6 py-2.5 border-b border-[#e2e4ef] bg-white shadow-2xs">
+          <AdminNotificationBell />
+          <div className="h-4 w-px bg-[#e2e4ef]" />
           <span className="font-mono-data text-[11px] text-[#4f5e7e]">
             {session.user.name ?? session.user.email}
           </span>

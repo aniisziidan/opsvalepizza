@@ -98,19 +98,39 @@ export async function processOutboxEmail(outboxEmailId: string): Promise<{
     return { claimed: true, success: true };
   } catch (err: any) {
     // 5. Provider failed -> mark FAILED and record error (Quote remains DISPATCHING for admin retry)
+    const errorMessage = err?.message || 'Email delivery failed';
+
     await prisma.outboxEmail.update({
       where: { id: outboxRecord.id },
       data: {
         status: 'FAILED',
         attempts: { increment: 1 },
-        lastError: err?.message || 'Email delivery failed',
+        lastError: errorMessage,
       },
     });
+
+    // Centralized notification for delivery failure
+    try {
+      const { emitNotificationEvent } = await import('@/lib/notifications/dispatcher');
+      await emitNotificationEvent({
+        type: 'EMAIL_DELIVERY_FAILED',
+        category: 'SYSTEM',
+        priority: 'HIGH',
+        incidentKey: `email_fail_${outboxRecord.to}`,
+        title: `Email Delivery Failed: ${outboxRecord.to}`,
+        message: `Failed to deliver "${outboxRecord.subject}": ${errorMessage}`,
+        entityType: 'QUOTE',
+        entityId: outboxRecord.quoteId || undefined,
+        actionUrl: outboxRecord.quoteId ? `/admin/quotes` : undefined,
+      });
+    } catch {
+      // Don't fail the outbox error return
+    }
 
     return {
       claimed: true,
       success: false,
-      error: err?.message || 'Email delivery failed',
+      error: errorMessage,
     };
   }
 }
