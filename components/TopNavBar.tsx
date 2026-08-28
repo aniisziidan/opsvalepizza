@@ -56,16 +56,6 @@ export const TopNavBar: React.FC = () => {
 
         {/* Trailing Actions */}
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* Admin Switcher Badge for easy access to Ops portal */}
-          <Link
-            href="/admin/dashboard"
-            className="hidden sm:inline-flex items-center gap-1.5 bg-[#1b2b48] text-[#d7e2ff] hover:bg-[#041632] px-3 py-2 rounded text-xs font-mono-data transition-colors cursor-pointer border border-[#8393b5]/30"
-            title="Switch to Internal Operations Portal"
-          >
-            <span className="material-symbols-outlined text-[16px] text-[#e3c290]">shield_person</span>
-            <span>{t('common.opsPortal')}</span>
-          </Link>
-
           {/* Language Selector Dropdown */}
           <div className="relative">
             <button
@@ -130,12 +120,6 @@ export const TopNavBar: React.FC = () => {
             {item.label}
           </Link>
         ))}
-        <Link
-          href="/admin/dashboard"
-          className="whitespace-nowrap px-2.5 py-1 rounded text-[11px] bg-[#1b2b48] text-[#e3c290] font-bold"
-        >
-          {t('common.opsPortal')}
-        </Link>
       </div>
     </nav>
   );

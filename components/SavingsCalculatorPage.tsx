@@ -94,6 +94,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
           print,
           boxesPerOrder,
           monthlyVolume,
+          currentPrice,
           currentPriceEur: currentPrice,
         }),
       });

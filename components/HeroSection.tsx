@@ -70,6 +70,7 @@ export const HeroSection: React.FC = () => {
           print: 'custom',
           boxesPerOrder: Math.min(monthlyVolume, 10000),
           monthlyVolume,
+          currentPrice,
           currentPriceEur: currentPrice,
         }),
       });
