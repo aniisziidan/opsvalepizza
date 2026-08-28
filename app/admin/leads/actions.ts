@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 import { LeadStatus, LEAD_STATUS_LABEL } from '@/lib/types';
+import { emailSender } from '@/lib/email/transporter';
 
 const updateStatusSchema = z.object({
   leadId: z.string().min(1, 'Lead ID is required'),
@@ -27,6 +28,12 @@ const addNoteSchema = z.object({
     .trim()
     .min(1, 'Note content cannot be empty')
     .max(2000, 'Note cannot exceed 2000 characters'),
+});
+
+const directEmailSchema = z.object({
+  leadId: z.string().min(1, 'Lead ID is required'),
+  subject: z.string().trim().min(1, 'Subject is required').max(200),
+  body: z.string().trim().min(1, 'Body is required').max(10000),
 });
 
 /**
@@ -124,4 +131,54 @@ export async function addLeadNote(rawLeadId: string, rawNoteText: string) {
   revalidatePath('/admin/dashboard');
 
   return { success: true };
+}
+
+/**
+ * Server action to send a direct transactional email to a lead contact and log in history.
+ */
+export async function sendDirectLeadEmail(rawLeadId: string, payload: { subject: string; body: string }) {
+  const admin = await requireAdmin();
+
+  const validated = directEmailSchema.parse({
+    leadId: rawLeadId,
+    subject: payload.subject,
+    body: payload.body,
+  });
+
+  const { leadId, subject, body } = validated;
+
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    include: { contact: true, company: true },
+  });
+
+  if (!lead || !lead.contact.email) {
+    throw new Error('Lead contact email not found');
+  }
+
+  // 1. Transmit email via email sender
+  const sendRes = await emailSender.sendMail({
+    from: `"OpsVale Logistics" <${process.env.SMTP_USER || 'no-reply@opsvale.com'}>`,
+    to: lead.contact.email,
+    subject,
+    text: body,
+    html: `<div style="font-family: sans-serif; line-height: 1.6; color: #041632; white-space: pre-wrap;">${body}</div>`,
+  });
+
+  // 2. Log in activity history
+  await prisma.leadActivity.create({
+    data: {
+      leadId,
+      type: 'EMAIL',
+      authorId: admin.id,
+      content: `Sent direct email to ${lead.contact.email} ("${subject}")`,
+    },
+  });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/leads');
+  revalidatePath(`/admin/leads/${leadId}`);
+  revalidatePath('/admin/dashboard');
+
+  return { success: true, sent: sendRes.sent };
 }

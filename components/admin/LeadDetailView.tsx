@@ -4,7 +4,7 @@ import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { LeadDetailData } from '@/lib/admin/queries';
 import { LEAD_STATUS_LABEL, LEAD_STATUS_STYLE, LeadStatus } from '@/lib/types';
-import { updateLeadStatus, addLeadNote } from '@/app/admin/leads/actions';
+import { updateLeadStatus, addLeadNote, sendDirectLeadEmail } from '@/app/admin/leads/actions';
 import { createQuote, dispatchQuote, getProposalShareUrl } from '@/app/admin/leads/[id]/quote-actions';
 import { timeAgo, formatDateTime, formatCurrency, formatNumber } from '@/lib/admin/formatters';
 
@@ -154,13 +154,13 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead }) => {
     e.preventDefault();
     startTransition(async () => {
       try {
-        await addLeadNote(
-          lead.id,
-          `Transmitted email proposal to ${lead.contact.email} ("${emailSubject}")`
-        );
+        await sendDirectLeadEmail(lead.id, {
+          subject: emailSubject,
+          body: emailBody,
+        });
         setShowEmailModal(false);
       } catch (err: any) {
-        alert(err.message || 'Failed to log proposal email');
+        alert(err.message || 'Failed to transmit proposal email');
       }
     });
   };
