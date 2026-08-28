@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTranslation } from '@/lib/i18n/context';
 
 export const HeroSection: React.FC = () => {
@@ -47,12 +48,16 @@ export const HeroSection: React.FC = () => {
         {/* Right Visual Content */}
         <div className="lg:col-span-6 relative bg-[#cbdbf5] h-full min-h-[380px] sm:min-h-[440px] lg:min-h-full">
           <div className="absolute inset-0 p-4 sm:p-8 flex items-center justify-center">
-            <img
-              className="w-full h-full object-cover border border-[#c5c6ce] shadow-lg filter contrast-105 rounded-sm"
-              alt="Neatly stacked, premium Kraft paper pizza boxes in a massive, brightly lit modern industrial warehouse."
-              referrerPolicy="no-referrer"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYDsi7xxfMKxwxKzTKtnKg_7mIUfUqRZE0G2muzKj9yVVtQTA2INKmMX-aNzheraaBBxKzsnFoJBiMuyjccsdHfxqN1Xu50nZ88fFMuVjiL3nI4ElqrRlwyUR5aD1tljWxwvdDXV6308NkVv6zlHqQiddamQOcycYr8HN3yzfOOTlByu4NH2Q74DHR777OwapVOPaKlc8rhuhVIxJmWGu9HIAgq9cioZu78lOrIZMTiN-wUyMwnQY70g"
-            />
+            <div className="relative w-full h-full">
+              <Image
+                src="/images/hero-warehouse.jpg"
+                alt="Neatly stacked, premium Kraft paper pizza boxes in a massive, brightly lit modern industrial warehouse."
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover border border-[#c5c6ce] shadow-lg filter contrast-105 rounded-sm"
+              />
+            </div>
           </div>
 
           {/* Decorative Overlay Elements */}
