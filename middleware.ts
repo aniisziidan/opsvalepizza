@@ -46,12 +46,21 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 3. Proposals portal - can be accessed via /proposals/[token] or /[locale]/proposals/[token]
-  // Allow direct /proposals/[token] or localized
+  // 3. Proposals portal - direct token route
+  if (pathname.startsWith('/proposals')) {
+    return NextResponse.next();
+  }
 
   // 4. Check if pathname already starts with a valid locale (/en, /de, /fr, /it, /es)
   const segments = pathname.split('/');
   const firstSegment = segments[1];
+
+  // If /[locale]/proposals/[token] is visited, redirect cleanly to /proposals/[token]
+  if (isValidLocale(firstSegment) && segments[2] === 'proposals') {
+    const rawToken = segments.slice(3).join('/');
+    const cleanUrl = new URL(`/proposals/${rawToken}`, req.url);
+    return NextResponse.redirect(cleanUrl);
+  }
 
   if (isValidLocale(firstSegment)) {
     return NextResponse.next();
