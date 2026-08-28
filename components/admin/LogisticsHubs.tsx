@@ -74,6 +74,14 @@ export const LogisticsHubs: React.FC<LogisticsHubsProps> = ({ corridors, countri
         setShowAddModal(false);
         setSuccessMsg('New logistics corridor successfully established.');
       } catch (err: any) {
+        if (
+          err?.message?.includes('failed-to-find-server-action') ||
+          err?.message?.includes('was not found on the server') ||
+          err?.digest?.includes('NEXT_NOT_FOUND')
+        ) {
+          window.location.reload();
+          return;
+        }
         setErrorMsg(err.message || 'Failed to create logistics corridor');
       }
     });
@@ -91,6 +99,14 @@ export const LogisticsHubs: React.FC<LogisticsHubsProps> = ({ corridors, countri
         setEditingCorridor(null);
         setSuccessMsg('Logistics corridor routing and rates updated.');
       } catch (err: any) {
+        if (
+          err?.message?.includes('failed-to-find-server-action') ||
+          err?.message?.includes('was not found on the server') ||
+          err?.digest?.includes('NEXT_NOT_FOUND')
+        ) {
+          window.location.reload();
+          return;
+        }
         setErrorMsg(err.message || 'Failed to update logistics corridor');
       }
     });
@@ -105,6 +121,14 @@ export const LogisticsHubs: React.FC<LogisticsHubsProps> = ({ corridors, countri
         await toggleLogisticsCorridorActive(id, !currentActive);
         setSuccessMsg(`Corridor status changed to ${!currentActive ? 'Active' : 'Inactive'}.`);
       } catch (err: any) {
+        if (
+          err?.message?.includes('failed-to-find-server-action') ||
+          err?.message?.includes('was not found on the server') ||
+          err?.digest?.includes('NEXT_NOT_FOUND')
+        ) {
+          window.location.reload();
+          return;
+        }
         setErrorMsg(err.message || 'Failed to toggle corridor status');
       }
     });
