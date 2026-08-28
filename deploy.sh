@@ -64,18 +64,7 @@ else
     exit 1
 fi
 
-# 2. Check environment configuration
-if [ ! -f ".env.production" ]; then
-    if [ -f ".env" ]; then
-        log_warn ".env.production not found, using .env instead."
-        cp .env .env.production
-    else
-        log_error "Neither .env.production nor .env found! Please create .env.production."
-        exit 1
-    fi
-fi
-
-# 3. Pull latest code (unless --no-pull flag is provided)
+# 2. Pull latest code first (unless --no-pull flag is provided)
 if [[ "$*" != *"--no-pull"* ]]; then
     if [ -d ".git" ]; then
         log_info "Fetching latest code from git repository..."
@@ -84,6 +73,41 @@ if [[ "$*" != *"--no-pull"* ]]; then
     fi
 else
     log_info "Skipping git pull (--no-pull specified)."
+fi
+
+# 3. Check / Auto-initialize environment configuration
+if [ ! -f ".env.production" ]; then
+    if [ -f ".env" ]; then
+        log_warn ".env.production not found, copying existing .env..."
+        cp .env .env.production
+    elif [ -f ".env.example" ]; then
+        log_warn ".env.production not found. Initializing from .env.example with secure random secrets..."
+        cp .env.example .env.production
+        
+        # Generate secure random secrets
+        RANDOM_AUTH=$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64)
+        RANDOM_CRON=$(openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -A n -t x1 | tr -d ' ')
+        RANDOM_DB_PASS=$(openssl rand -hex 12 2>/dev/null || head -c 12 /dev/urandom | od -A n -t x1 | tr -d ' ')
+        
+        # Update placeholders in .env.production
+        sed -i "s|AUTH_SECRET=\".*\"|AUTH_SECRET=\"${RANDOM_AUTH}\"|g" .env.production
+        sed -i "s|CRON_SECRET=\".*\"|CRON_SECRET=\"${RANDOM_CRON}\"|g" .env.production
+        sed -i "s|APP_ENV=\".*\"|APP_ENV=\"production\"|g" .env.production
+        sed -i "s|APP_URL=\".*\"|APP_URL=\"https://opsvale.com\"|g" .env.production
+        sed -i "s|TRUST_PROXY=\".*\"|TRUST_PROXY=\"true\"|g" .env.production
+        
+        # Append production DB credentials if not present
+        if ! grep -q "POSTGRES_USER=" .env.production; then
+            echo "POSTGRES_USER=opsvale_prod" >> .env.production
+            echo "POSTGRES_PASSWORD=${RANDOM_DB_PASS}" >> .env.production
+            echo "POSTGRES_DB=opsvale_db" >> .env.production
+        fi
+        
+        log_success "Initialized .env.production with secure production credentials."
+    else
+        log_error "Neither .env.production, .env, nor .env.example found!"
+        exit 1
+    fi
 fi
 
 # 4. Build application container
