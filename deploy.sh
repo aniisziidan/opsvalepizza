@@ -128,9 +128,9 @@ $DOCKER_COMPOSE -f $COMPOSE_FILE up -d postgres
 log_info "Deploying updated application container..."
 $DOCKER_COMPOSE -f $COMPOSE_FILE up -d --no-deps app
 
-# 6. Apply database migrations
-log_info "Applying Prisma database migrations..."
-$DOCKER_COMPOSE -f $COMPOSE_FILE exec -T app npx prisma migrate deploy
+# 6. Apply database schema sync
+log_info "Applying Prisma database migrations & schema updates..."
+$DOCKER_COMPOSE -f $COMPOSE_FILE exec -T app npx prisma db push --accept-data-loss
 
 # 7. Optional seeding
 if [[ "$*" == *"--seed"* ]]; then
