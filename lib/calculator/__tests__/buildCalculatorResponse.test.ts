@@ -3,7 +3,15 @@ import { buildCalculatorResponse } from '../buildCalculatorResponse';
 import type { PublicRangeResult } from '@/lib/pricing/publicRange';
 import type { SavingsResult } from '@/lib/calculator/savings';
 
-const range: PublicRangeResult = { available: true, minEur: 0.256789, maxEur: 0.301234 };
+const range: PublicRangeResult = {
+  available: true,
+  minEur: 0.256789,
+  maxEur: 0.301234,
+  breakdown: null,
+  markupMin: 0,
+  markupMax: 0,
+  source: 'APPROVED_RANGE',
+};
 const savings: SavingsResult = {
   annualVolume: 720000,
   savingsPerBoxMin: 0.048766,
