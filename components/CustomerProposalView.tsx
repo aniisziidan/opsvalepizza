@@ -82,8 +82,8 @@ export const CustomerProposalView: React.FC<CustomerProposalViewProps> = ({ toke
   return (
     <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-col justify-between selection:bg-[#ffdeac] selection:text-[#281900]">
       {/* Top Brand Bar */}
-      <header className="bg-[#041632] text-white border-b border-[#1b2b48] py-4 px-6 sm:px-12">
-        <div className="max-w-5xl mx-auto flex justify-between items-center">
+      <header className="bg-[#041632] text-white border-b border-[#1b2b48] py-4 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-5xl mx-auto flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-8 h-8 bg-[#e77114] rounded flex items-center justify-center text-white">
               <span className="material-symbols-outlined text-xl">package</span>
@@ -104,7 +104,7 @@ export const CustomerProposalView: React.FC<CustomerProposalViewProps> = ({ toke
       </header>
 
       {/* Main Proposal Body */}
-      <main className="max-w-5xl mx-auto w-full p-6 sm:p-10 my-6 space-y-8">
+      <main className="w-full max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 my-6 space-y-8">
         {/* Status Banners */}
         {proposal.status === 'SUPERSEDED' && (
           <div className="bg-amber-50 border-2 border-amber-300 text-amber-900 p-5 rounded-xl font-mono-data text-xs flex items-center gap-3 shadow-sm">
@@ -367,7 +367,7 @@ export const CustomerProposalView: React.FC<CustomerProposalViewProps> = ({ toke
       {/* MODAL 1: ACCEPT PROPOSAL */}
       {showAcceptModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-4">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-4">
             <div className="flex justify-between items-center border-b border-[#c5c6ce] pb-3">
               <h3 className="font-headline text-lg font-bold text-[#041632]">Accept Commercial Proposal</h3>
               <button onClick={() => setShowAcceptModal(false)} className="text-[#75777e] hover:text-[#041632] cursor-pointer">
@@ -418,7 +418,7 @@ export const CustomerProposalView: React.FC<CustomerProposalViewProps> = ({ toke
       {/* MODAL 2: REQUEST MODIFICATION */}
       {showModifyModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-4">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-4">
             <div className="flex justify-between items-center border-b border-[#c5c6ce] pb-3">
               <h3 className="font-headline text-lg font-bold text-[#041632]">Request Proposal Adjustments</h3>
               <button onClick={() => setShowModifyModal(false)} className="text-[#75777e] hover:text-[#041632] cursor-pointer">
@@ -471,7 +471,7 @@ export const CustomerProposalView: React.FC<CustomerProposalViewProps> = ({ toke
       {/* MODAL 3: DECLINE OFFER */}
       {showDeclineModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-4">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-4">
             <div className="flex justify-between items-center border-b border-[#c5c6ce] pb-3">
               <h3 className="font-headline text-lg font-bold text-[#041632]">Decline Proposal</h3>
               <button onClick={() => setShowDeclineModal(false)} className="text-[#75777e] hover:text-[#041632] cursor-pointer">

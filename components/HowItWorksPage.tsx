@@ -35,7 +35,7 @@ export const HowItWorksPage: React.FC = () => {
   ];
 
   return (
-    <div className="w-full py-12 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16">
+    <div className="w-full py-12 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-12 border-l-4 border-[#e77114] pl-6 py-2">
         <span className="font-mono-data text-xs text-[#735a31] uppercase tracking-widest block mb-1 font-semibold">
           {t('howItWorks.title')}
@@ -66,21 +66,21 @@ export const HowItWorksPage: React.FC = () => {
         ))}
       </div>
 
-      <div className="bg-[#eff4ff] border border-[#c5c6ce] p-8 sm:p-12 rounded-xl flex flex-col md:flex-row items-center justify-between gap-8">
+      <div className="bg-[#eff4ff] border border-[#c5c6ce] p-6 sm:p-10 md:p-12 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 sm:gap-8">
         <div>
           <h2 className="font-headline text-2xl font-bold text-[#041632] mb-2">{t('calculator.title')}</h2>
           <p className="font-body text-sm text-[#44474d]">{t('calculator.subtitle')}</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full md:w-auto">
           <Link
             href={`/${locale}/calculator`}
-            className="bg-[#e77114] text-white px-6 py-3.5 rounded-lg font-mono-data text-xs uppercase font-bold tracking-wider hover:bg-[#c25e10] transition-colors cursor-pointer"
+            className="w-full sm:w-auto text-center bg-[#e77114] text-white px-6 py-3.5 rounded-lg font-mono-data text-xs uppercase font-bold tracking-wider hover:bg-[#c25e10] transition-colors cursor-pointer min-h-[44px] flex items-center justify-center"
           >
             {t('common.calculateSavingsCta')}
           </Link>
           <Link
             href={`/${locale}/quote`}
-            className="bg-[#041632] text-white px-6 py-3.5 rounded-lg font-mono-data text-xs uppercase font-bold tracking-wider hover:bg-[#1b2b48] transition-colors cursor-pointer"
+            className="w-full sm:w-auto text-center bg-[#041632] text-white px-6 py-3.5 rounded-lg font-mono-data text-xs uppercase font-bold tracking-wider hover:bg-[#1b2b48] transition-colors cursor-pointer min-h-[44px] flex items-center justify-center"
           >
             {t('common.requestQuoteCta')}
           </Link>

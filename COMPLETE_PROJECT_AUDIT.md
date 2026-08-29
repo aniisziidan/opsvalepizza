@@ -10,6 +10,12 @@
 
 ## 0. Remediation Log (2026-08-29)
 
+> **Shipped to production 2026-08-29.** The hardening pass (**PR #4**) and the logistics→landed-cost
+> feature (**PR #5**) are both merged to `main`, built by CI, and deployed to the VPS (app healthy).
+> A one-time `P3009` on deploy (the consolidated `0_init` recorded as failed against a DB that
+> already had the 5 granular migrations + full schema) was resolved with
+> `prisma migrate resolve --applied 0_init`; migration history is now consistent.
+>
 > Added after the original audit. The high-priority findings below have since been addressed on
 > branch `harden/audit-p1-items` (**PR #4**). The rest of this document is preserved as the
 > original forensic snapshot; individual findings are annotated inline with **✅ RESOLVED**.
@@ -210,7 +216,7 @@ OpsVale is a **Next.js 15 / React 19 / Prisma 6 / PostgreSQL** monorepo that imp
 
 **Evidence:** `LogisticsCost` model (country, route, port, shipMethod, freight/inland/other EUR, active), `app/admin/logistics/page.tsx`, `actions.ts`, `components/admin/LogisticsHubs.tsx`, and `app/admin/logistics/__tests__/logisticsValidation.test.ts`. CRUD + active/inactive + Zod validation present.
 
-**Note:** logistics costs are **not** currently fed into the landed-cost computation (landed cost is stored directly, not assembled from freight+inland+other). This matches the schema's `LandedCost.costEur` manual/dynamic model, but the "assemble landed cost from logistics components" idea in plan §2 (spec §27) is **not** wired — landed cost is entered/imported directly. Minor scope reduction, not a defect.
+**Note:** ~~logistics costs are **not** currently fed into the landed-cost computation~~ — **✅ RESOLVED (shipped 2026-08-29, in production)**. Effective landed cost = product `costEur` + the country's active-corridor logistics (freight+inland+other); markup applies to the sum (`lib/pricing/logistics.ts`, `resolvePublicRange`). **One active corridor per country** is enforced by a DB partial unique index (`WHERE active`) plus in-transaction sibling deactivation and graceful `P2002` handling; the product-vs-logistics breakdown is frozen into `CalculatorSnapshot` (new columns) + `Quote.pricingSnapshot` (internal-only JSON) for reproducibility; admins see the composition (Pricing Management detailed, quote-builder compact) while customers still see only the final delivered price; logistics edits are audited in `PricingAuditLog` (`LOGISTICS_COST`). Design/plan: `docs/superpowers/{specs,plans}/2026-08-29-logistics-landed-cost*`.
 
 ---
 
@@ -452,7 +458,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 **Medium:**
 - ~~**Redundant non-localized route stubs**~~ — **✅ RESOLVED**: `app/(marketing)/**`, `app/calculator/page.tsx`, and `app/quote/page.tsx` removed (middleware already redirects every non-localized path to `/{locale}/…`). A single root `app/page.tsx` redirect is kept as a belt-and-suspenders fallback; `app/quote/actions.ts` (the real submission server action) is retained.
 - ~~**Anomaly-detection notification types** defined but never emitted~~ — **✅ RESOLVED**: `lib/analytics/anomalyEmission.ts` maps computed health alerts → `AnalyticsAlertEvent`s (unit-tested), emitted by the new `/api/cron/detect-anomalies` scheduler with `incidentKey` dedup.
-- **Logistics components not fed into landed cost** (data captured but unused by pricing).
+- ~~**Logistics components not fed into landed cost**~~ — **✅ RESOLVED (shipped 2026-08-29)**: effective landed = product + active-corridor freight/inland/other, markup on the sum; one-active-corridor-per-country DB-enforced; breakdown snapshotted for reproducibility; admin composition views; logistics edits audited. See §10.
 
 **Low / Informational:**
 - No `TODO`/`FIXME`/`HACK`/`@ts-ignore`/`eslint-disable` found (clean).

@@ -189,7 +189,7 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
 
   return (
     <div className="w-full relative py-10 sm:py-16 overflow-hidden">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16 relative z-10">
+      <div className="w-full py-12 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 font-body relative z-10">
         {/* Header */}
         <div className="mb-10 border-l-4 border-[#e77114] pl-6 py-2">
           <h1 className="font-headline text-3xl sm:text-4xl md:text-5xl font-bold text-[#041632] mb-4">
@@ -495,10 +495,10 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                         <span className="font-mono-data text-xs text-[#b7c7eb] uppercase tracking-widest block mb-2 font-semibold">
                           {t('calculator.annualSavingsTitle')}
                         </span>
-                        <div className={`font-headline text-3xl sm:text-4xl lg:text-5xl font-bold flex items-baseline gap-1 text-white ${
+                        <div className={`font-headline text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold flex flex-wrap items-baseline gap-1 text-white break-words ${
                           isAnimating ? 'scale-105 text-[#e77114]' : ''
                         } transition-all`}>
-                          <span className="text-2xl sm:text-3xl text-[#ffdeac] font-normal">€</span>
+                          <span className="text-xl sm:text-2xl text-[#ffdeac] font-normal">€</span>
                           <span>
                             {available
                               ? `${formatCurrency(result.savings.yearlyMin)} – ${formatCurrency(result.savings.yearlyMax)}`

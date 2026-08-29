@@ -147,7 +147,7 @@ export const LogisticsHubs: React.FC<LogisticsHubsProps> = ({ corridors, countri
   };
 
   return (
-    <div className="p-6 sm:p-8 md:p-10 space-y-6 max-w-[1440px] mx-auto bg-[#f8f9ff]">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 space-y-6 bg-[#f8f9ff]">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#c5c6ce] pb-6">
         <div>
@@ -274,7 +274,7 @@ export const LogisticsHubs: React.FC<LogisticsHubsProps> = ({ corridors, countri
       {/* Add / Edit Modal */}
       {(showAddModal || editingCorridor) && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl border border-[#c5c6ce] space-y-5 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-[#c5c6ce] space-y-5 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex justify-between items-center border-b border-[#c5c6ce] pb-4">
               <h3 className="font-headline text-lg font-bold text-[#041632]">
                 {editingCorridor ? 'Edit Logistics Corridor Rates' : 'Add New Logistics Corridor'}

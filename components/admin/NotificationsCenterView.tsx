@@ -147,7 +147,7 @@ export const NotificationsCenterView: React.FC<NotificationsCenterViewProps> = (
   };
 
   return (
-    <div className="p-6 sm:p-10 max-w-7xl mx-auto w-full space-y-6">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 space-y-6">
       {/* Top Header & Quick Stats */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-[#c5c6ce] rounded-xl p-6 shadow-2xs">
         <div>

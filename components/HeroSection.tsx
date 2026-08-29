@@ -48,7 +48,7 @@ export const HeroSection: React.FC = () => {
 
   const [result, setResult] = useState<CalculatorApiResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isCalculated, setIsCalculated] = useState<boolean>(false);
+  const [, setIsCalculated] = useState<boolean>(false);
   const requestIdRef = useRef(0);
 
   const formatCurrency = (val: number) => {
@@ -116,7 +116,7 @@ export const HeroSection: React.FC = () => {
 
   return (
     <section className="w-full border-b border-[#c5c6ce] relative overflow-hidden bg-[#041632] text-white">
-      {/* Background Video */}
+      {/* Full-width Background Video */}
       <video
         autoPlay
         loop
@@ -137,9 +137,10 @@ export const HeroSection: React.FC = () => {
         }}
       />
 
-      <div className="relative z-10 w-full grid grid-cols-1 lg:grid-cols-12 min-h-[640px] lg:min-h-[720px]">
-        {/* Left Side: 70% Transparent (30% overlay opacity) */}
-        <div className="lg:col-span-7 relative p-6 sm:p-10 md:p-14 lg:p-16 flex flex-col justify-center bg-[#041632]/30 backdrop-blur-sm lg:border-r border-white/10">
+      {/* Controlled Centered Content Container */}
+      <div className="w-full max-w-[1440px] mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-12 min-h-[640px] lg:min-h-[720px]">
+        {/* Left Side: Hero Value Prop */}
+        <div className="lg:col-span-7 relative p-6 sm:p-10 md:p-12 lg:p-16 flex flex-col justify-center bg-[#041632]/30 backdrop-blur-sm lg:border-r border-white/10">
           <div className="relative z-10 max-w-xl">
             <div className="inline-flex items-center gap-2 mb-6 bg-black/40 backdrop-blur-md px-3.5 py-1.5 border border-white/20 rounded-full w-fit">
               <span className="w-2.5 h-2.5 rounded-full bg-[#e77114] animate-pulse"></span>
@@ -159,21 +160,21 @@ export const HeroSection: React.FC = () => {
 
             {/* Value Pillars Pills */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8 pt-4 border-t border-white/20">
-              <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-md px-3 py-2 border border-white/15 rounded-sm">
+              <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-md px-3 py-2.5 border border-white/15 rounded-sm">
                 <span className="material-symbols-outlined text-[#e77114] text-xl">hub</span>
                 <div>
                   <p className="font-headline text-xs font-bold text-white">14 European Hubs</p>
                   <p className="text-[10px] text-[#cbd5e1] font-mono-data">Intermodal Corridors</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-md px-3 py-2 border border-white/15 rounded-sm">
+              <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-md px-3 py-2.5 border border-white/15 rounded-sm">
                 <span className="material-symbols-outlined text-[#e77114] text-xl">verified</span>
                 <div>
                   <p className="font-headline text-xs font-bold text-white">100% Food-Grade</p>
                   <p className="text-[10px] text-[#cbd5e1] font-mono-data">EU 1935/2004 Audit</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-md px-3 py-2 border border-white/15 rounded-sm">
+              <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-md px-3 py-2.5 border border-white/15 rounded-sm">
                 <span className="material-symbols-outlined text-[#e77114] text-xl">speed</span>
                 <div>
                   <p className="font-headline text-xs font-bold text-white">24h SLA Quote</p>
@@ -185,13 +186,13 @@ export const HeroSection: React.FC = () => {
             <div className="flex flex-wrap items-center gap-4">
               <Link
                 href={`/${locale}/products`}
-                className="border border-white/50 text-white bg-black/40 backdrop-blur-md px-6 py-3.5 font-mono-data text-xs uppercase tracking-widest hover:bg-white hover:text-[#041632] transition-colors cursor-pointer text-center font-bold rounded-sm shadow-md"
+                className="w-full sm:w-auto border border-white/50 text-white bg-black/40 backdrop-blur-md px-6 py-3.5 font-mono-data text-xs uppercase tracking-widest hover:bg-white hover:text-[#041632] transition-colors cursor-pointer text-center font-bold rounded-sm shadow-md min-h-[44px] flex items-center justify-center"
               >
                 {t('common.viewCatalogCta')}
               </Link>
               <Link
                 href={`/${locale}/quote`}
-                className="bg-[#e77114] text-white px-6 py-3.5 font-mono-data text-xs uppercase tracking-widest hover:bg-[#c25e10] transition-colors shadow-xl cursor-pointer text-center font-bold rounded-sm flex items-center gap-2"
+                className="w-full sm:w-auto bg-[#e77114] text-white px-6 py-3.5 font-mono-data text-xs uppercase tracking-widest hover:bg-[#c25e10] transition-colors shadow-xl cursor-pointer text-center font-bold rounded-sm flex items-center justify-center gap-2 min-h-[44px]"
               >
                 {t('hero.secondaryCta')}
                 <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -200,7 +201,7 @@ export const HeroSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Side: 40% Transparent (60% background overlay) */}
+        {/* Right Side: Quick Calculator */}
         <div className="lg:col-span-5 bg-[#041632]/40 backdrop-blur-sm p-6 sm:p-8 lg:p-10 flex flex-col justify-center relative z-10">
           <div className="bg-[#112239]/60 backdrop-blur-md border border-white/20 p-6 sm:p-7 rounded-xl shadow-2xl relative">
             {/* Header */}
@@ -234,7 +235,7 @@ export const HeroSection: React.FC = () => {
                   <select
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    className="w-full bg-[#041632]/80 border border-white/20 text-white px-3 py-2 text-xs font-mono-data rounded-sm outline-none focus:border-[#e77114] cursor-pointer backdrop-blur-sm"
+                    className="w-full bg-[#041632]/80 border border-white/20 text-white px-3 py-2 text-xs font-mono-data rounded-sm outline-none focus:border-[#e77114] cursor-pointer backdrop-blur-sm min-h-[40px]"
                   >
                     {COUNTRIES.map((c) => (
                       <option key={c.code} value={c.code} className="bg-[#041632] text-white">
@@ -254,7 +255,7 @@ export const HeroSection: React.FC = () => {
                         key={s}
                         type="button"
                         onClick={() => setBoxSize(s)}
-                        className={`py-1.5 text-xs font-mono-data font-bold rounded-sm transition-colors cursor-pointer border ${
+                        className={`py-2 text-xs font-mono-data font-bold rounded-sm transition-colors cursor-pointer border min-h-[40px] flex items-center justify-center ${
                           boxSize === s
                             ? 'bg-[#e77114] border-[#e77114] text-white shadow-sm'
                             : 'bg-[#041632]/80 border-white/20 text-[#cbd5e1] hover:text-white backdrop-blur-sm'
@@ -283,7 +284,7 @@ export const HeroSection: React.FC = () => {
                       key={vol}
                       type="button"
                       onClick={() => setMonthlyVolume(vol)}
-                      className={`py-1 text-xs font-mono-data rounded-sm transition-colors cursor-pointer border ${
+                      className={`py-2 text-xs font-mono-data rounded-sm transition-colors cursor-pointer border min-h-[40px] flex items-center justify-center ${
                         monthlyVolume === vol
                           ? 'bg-white/25 border-white/50 text-white font-bold'
                           : 'bg-[#041632]/80 border-white/20 text-[#cbd5e1] hover:text-white backdrop-blur-sm'
@@ -300,7 +301,7 @@ export const HeroSection: React.FC = () => {
                 <label className="font-mono-data text-[11px] text-[#cbd5e1] uppercase block mb-1 font-semibold">
                   {t('calculator.currentPriceLabel')}
                 </label>
-                <div className="relative flex items-center bg-[#041632]/80 border border-white/20 rounded-sm focus-within:border-[#e77114] backdrop-blur-sm">
+                <div className="relative flex items-center bg-[#041632]/80 border border-white/20 rounded-sm focus-within:border-[#e77114] backdrop-blur-sm min-h-[44px]">
                   <span className="pl-3 font-mono-data text-xs text-[#cbd5e1]">€</span>
                   <input
                     type="number"
@@ -319,7 +320,7 @@ export const HeroSection: React.FC = () => {
 
             {/* Results Display */}
             <div className="mt-5 p-4 rounded-lg bg-[#041632]/70 border border-white/15 space-y-3 backdrop-blur-sm">
-              <div className="flex items-baseline justify-between">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-mono-data text-[11px] uppercase tracking-wider text-[#cbd5e1]">
                   {t('calculator.annualSavingsTitle')}
                 </span>
@@ -330,9 +331,9 @@ export const HeroSection: React.FC = () => {
                 )}
               </div>
 
-              <div className="font-headline text-2xl sm:text-3xl font-bold text-[#ffdeac] flex items-baseline gap-1 drop-shadow-sm">
+              <div className="font-headline text-2xl sm:text-3xl font-bold text-[#ffdeac] flex flex-wrap items-baseline gap-1 drop-shadow-sm">
                 <span>€</span>
-                <span>
+                <span className="break-all">
                   {result && result.available
                     ? `${formatCurrency(result.savings.yearlyMin)} – ${formatCurrency(result.savings.yearlyMax)}`
                     : '8,400 – 14,200'}
@@ -340,7 +341,7 @@ export const HeroSection: React.FC = () => {
                 <span className="text-xs text-[#cbd5e1] font-normal">/ yr</span>
               </div>
 
-              <div className="flex items-center justify-between text-xs font-mono-data text-[#cbd5e1] pt-2 border-t border-white/10">
+              <div className="flex flex-wrap items-center justify-between gap-1 text-xs font-mono-data text-[#cbd5e1] pt-2 border-t border-white/10">
                 <span>OpsVale Est. Price:</span>
                 <span className="text-white font-bold">
                   {result && result.available
@@ -355,16 +356,16 @@ export const HeroSection: React.FC = () => {
               <button
                 type="button"
                 onClick={handleRequestQuote}
-                className="w-full bg-[#e77114] text-white py-3.5 px-4 rounded-sm font-mono-data text-xs uppercase tracking-widest hover:bg-[#c25e10] transition-colors shadow-lg flex items-center justify-center gap-2 font-bold cursor-pointer"
+                className="w-full bg-[#e77114] text-white py-3.5 px-4 rounded-sm font-mono-data text-xs uppercase tracking-widest hover:bg-[#c25e10] transition-colors shadow-lg flex items-center justify-center gap-2 font-bold cursor-pointer min-h-[48px]"
               >
                 <span>{t('hero.secondaryCta')}</span>
                 <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </button>
 
-              <div className="text-center">
+              <div className="text-center pt-1">
                 <Link
                   href={`/${locale}/calculator`}
-                  className="text-[11px] text-[#cbd5e1] hover:text-white font-mono-data underline decoration-dotted transition-colors"
+                  className="text-[11px] text-[#cbd5e1] hover:text-white font-mono-data underline decoration-dotted transition-colors inline-block py-1"
                 >
                   Open Full Precision Calculator →
                 </Link>

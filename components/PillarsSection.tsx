@@ -8,7 +8,7 @@ export const PillarsSection: React.FC = () => {
 
   return (
     <section className="w-full bg-[#f8f9ff] py-16 sm:py-20 border-b border-[#c5c6ce]">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="font-headline text-3xl sm:text-4xl font-bold text-[#041632] mb-4">
             {t('pillars.title')}

@@ -133,7 +133,7 @@ export const AdminNotificationBell: React.FC = () => {
 
       {/* Popover Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-[#c5c6ce] rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 font-mono-data text-xs">
+        <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm bg-white border border-[#c5c6ce] rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 font-mono-data text-xs">
           {/* Header */}
           <div className="p-3.5 bg-[#041632] text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
