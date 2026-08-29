@@ -255,7 +255,7 @@ OpsVale is a **Next.js 15 / React 19 / Prisma 6 / PostgreSQL** monorepo that imp
 
 **Evidence:** `lib/pdf/generateProposalPdf.ts` uses **pdfkit** (vector primitives + Helvetica core fonts) to render a deterministic single A4 sheet: DRAFT watermark, status banners (SUPERSEDED/ACCEPTED/REJECTED/EXPIRED), corporate header, pricing block, spec/logistics/notes sections, footer with legal notice. Localized via `getDictionary`. Served by `app/api/proposals/[token]/pdf/route.ts` (`runtime='nodejs'`, `no-store`) and `app/api/admin/quotes/[id]/pdf/route.ts`. Tests: `pdfGeneration.test.ts`, `localizedPdf.test.ts`.
 
-**Caveats (⚫/🟠):** monetary/date formatting is hard-coded to `en-GB`/`en-US` locales inside the PDF even when the document locale is de/fr/it/es (partial localization). Body copy uses only core Helvetica (no embedded Unicode font) — fine for Western-European text but would not render non-Latin glyphs.
+**Caveats (⚫/🟠):** ~~monetary/date formatting is hard-coded to `en-GB`/`en-US` locales inside the PDF even when the document locale is de/fr/it/es (partial localization).~~ — **✅ RESOLVED 2026-08-29**: numbers and dates are now formatted per document locale via `lib/pdf/formatLocale.ts` (`formatPdfDecimal`/`formatPdfInteger`/`formatPdfDate`), which also normalises the exotic group separators some locales emit (e.g. French U+202F) to ASCII spaces so the Helvetica core font can always render them (unit-tested for Latin-1 safety). Body copy still uses only core Helvetica (no embedded Unicode font) — fine for Western-European text but would not render non-Latin glyphs.
 
 ---
 
@@ -355,7 +355,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 
 **Gaps:**
 - 🟢 ~~**No `sitemap.ts`**~~ — **✅ RESOLVED**: `app/sitemap.ts` emits all locale × public-path URLs (excludes admin/api/proposals); `/sitemap.xml` now renders (verified in the build route table).
-- 🟠 The robots **allow-list uses non-localized paths** (`/calculator`, `/products`, `/how-it-works`, `/about`, `/quote`) which now only exist as 307 redirect stubs; canonical content lives under `/[locale]/…`. *(Still open — harmless, since `allow: '/'` already permits all public content.)*
+- 🟢 ~~The robots **allow-list uses non-localized paths** (`/calculator`, `/products`, …) which now only exist as 307 redirect stubs.~~ — **✅ RESOLVED 2026-08-29**: `app/robots.ts` now uses a single `allow: '/'` (which already covers every localized `/[locale]/…` path) instead of enumerating the non-localized stub paths; `disallow` for `/admin/`, `/proposals/`, `/api/` is unchanged.
 
 ---
 
@@ -431,7 +431,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 | Master plan: "24 tests… passing" | 156 tests passing | ⚫ Outdated |
 | DEPLOYMENT.md: `node:22-alpine` | `Dockerfile` uses `node:20-alpine` | ⚫ Mismatch |
 | DEPLOYMENT.md: "`npx prisma migrate deploy`" | `deploy.sh` now uses `prisma migrate deploy` (+ auto-baseline) | 🟢 ✅ Now consistent |
-| VPS guide: "3 containers incl. `opsvale-caddy` TLS proxy" | Caddy now defined in `docker-compose.prod.yml` under opt-in `proxy` profile | 🟢 ✅ Now supported (VPS guide still to reconcile) |
+| VPS guide: "3 containers incl. `opsvale-caddy` TLS proxy" | Caddy now defined in `docker-compose.prod.yml` under opt-in `proxy` profile; VPS guide describes it as opt-in and its "Updates" step now pulls the GHCR image via `deploy.sh` instead of building on the server | 🟢 ✅ Reconciled |
 | DEPLOYMENT.md: robots disallows /admin,/proposals,/api | True in prod (`app/robots.ts`) | 🟢 Verified |
 | DEPLOYMENT.md: "S3/R2/MinIO supported" | `S3StorageAdapter` present + fail-fast config | 🟢 Verified |
 | DEPLOYMENT.md: Infra Diagnostics / DB latency in /admin/settings | `SettingsView` + `/api/health` exist | 🟢 Plausible (not runtime-verified) |
@@ -556,12 +556,12 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 7. ✅ ~~Call `validateProductionLegalCompliance` at boot~~ — **DONE**. ⚠️ Still **verify/override** the placeholder legal entity + certification values via env.
 
 **P2 — important**
-8. ✅ ~~Add `app/sitemap.ts`~~ — **DONE**. Robots allow-list → localized paths still open (harmless).
+8. ✅ ~~Add `app/sitemap.ts`~~ — **DONE**. ✅ ~~Robots allow-list → localized paths~~ — **DONE** (`allow: '/'`).
 9. ✅ ~~Re-validate `active`/role in the session/JWT callback (or shorten session TTL).~~ — **DONE**: periodic JWT re-validation + layout `active` re-check + 12h `maxAge`.
-10. ⚪ **PARTIAL** — `DEPLOYMENT.md` updated (migration command, TLS options, new cron). README/VPS-guide reconciliation (i18n = custom, phase status, node version, test count, container set) still pending.
+10. ✅ **DONE** — `DEPLOYMENT.md` (migration command, TLS options, new cron), README (i18n = custom, phase status, hardening pass), and the VPS guide (Caddy described as opt-in; "Updates" step now pulls the GHCR image via `deploy.sh` instead of building on the server) are reconciled with the shipped reality.
 
 **P3 — nice to have**
-11. ⚪ **OPEN** — Real Playwright E2E for acquisition→dispatch→accept; wire anomaly-detection emission; remove redundant non-localized route stubs; localize PDF number/date formatting.
+11. ⚪ **PARTIAL** — ✅ localize PDF number/date formatting **DONE** (`lib/pdf/formatLocale.ts`). Still open: real Playwright E2E for acquisition→dispatch→accept; wire anomaly-detection emission; remove redundant non-localized route stubs.
 
 ---
 
@@ -581,10 +581,10 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 | Scalability | 5 | In-memory rate limit + local disk storage default limit horizontal scale |
 | Observability | 6 | Health probe + incidents + audit logs; no external logging/metrics wired |
 | Deployment | 7 *(was 4)* | **`prisma migrate deploy` + auto-baseline, deploy-time `pg_dump` backups, opt-in Caddy TLS profile** (§0). Restore runbook + some doc reconciliation still pending. |
-| Documentation | 5 | Thorough but materially outdated/contradictory in places |
+| Documentation | 8 *(was 5)* | README/DEPLOYMENT/VPS guide reconciled with shipped reality (i18n = custom, phase status, node, opt-in Caddy, pull-not-build updates, dual crons); remediation log kept in sync. Master plan (historical) still understates. |
 | Maintainability | 8 | Clean code, no debt markers, typed; some duplication (rate limiters, route stubs) |
 
-**Overall Production Readiness Score: 66 / 100 (original) → ~83 / 100 (post-remediation, 2026-08-29).**
+**Overall Production Readiness Score: 66 / 100 (original) → ~85 / 100 (post-remediation, 2026-08-29).**
 
 The original score was pulled down by *operational/deployment* and *GDPR/compliance* readiness. The remediation pass (§0) lifts Security, Privacy/GDPR, and Deployment materially. Remaining drags: placeholder legal entity values, in-memory rate-limit store (single-instance), no committed E2E, and minor doc reconciliation — none of which block a controlled single-instance launch once the legal values and `CRON_SECRET`/TLS path are set.
 
@@ -614,8 +614,8 @@ The original score was pulled down by *operational/deployment* and *GDPR/complia
 5. **P1** — ✅ Remove `unsafe-inline` from CSP (nonce). **DONE (hybrid — dynamic routes)**.
 6. **P1** — ✅ Unify rate limiting, TRUST_PROXY-aware; fail-closed cron. **DONE** (shared Redis store deferred).
 7. **P1** — ✅ Enforce legal validation at boot. **DONE** — ⚠️ still override placeholder entity/cert values via env.
-8. **P2** — ✅ `sitemap.ts` **DONE**; ✅ re-validate `active` in session **DONE**; ⚪ correct robots allow-list still open (harmless).
-9. **P2** — ⚪ **PARTIAL** — `DEPLOYMENT.md` reconciled; README/VPS-guide (i18n, phases, node, test count) pending.
-10. **P3** — ⚪ **OPEN** — Real Playwright E2E; anomaly emission; prune route stubs; localize PDF formatting.
+8. **P2** — ✅ `sitemap.ts` **DONE**; ✅ re-validate `active` in session **DONE**; ✅ correct robots allow-list **DONE** (`allow: '/'`).
+9. **P2** — ✅ **DONE** — `DEPLOYMENT.md`, README (i18n, phases, hardening pass), and the VPS guide (opt-in Caddy; pull-not-build updates) reconciled.
+10. **P3** — ⚪ **PARTIAL** — ✅ localize PDF number/date formatting **DONE**; still open: real Playwright E2E; anomaly emission; prune route stubs.
 
 *End of audit. No project code was modified; this document is the sole deliverable.*

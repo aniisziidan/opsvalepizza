@@ -202,14 +202,20 @@ CRON
 
 ---
 
-### 6. Zero-Downtime Updates
+### 6. Updates (pull the prebuilt image — never build on the VPS)
 
-To deploy new code updates:
+Code updates are built by **GitHub Actions** on merge to `main` and pushed to GHCR; the VPS only
+pulls. **Do not** run `docker compose build` on the server — it contradicts the canonical pipeline in
+`AGENTS.md` and the Architecture note above. To roll a new build out:
 
 ```bash
 cd /opt/opsvale
-git pull origin main
-docker compose -f docker-compose.prod.yml build app
-docker compose -f docker-compose.prod.yml up -d --no-deps app
-docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
+# Pulls the latest GHCR image, backs up the DB, runs `prisma migrate deploy`, health-checks:
+bash deploy.sh
+
+# Pin/roll back to a specific build instead of :latest:
+IMAGE_TAG=<git-sha> bash deploy.sh
 ```
+
+`deploy.sh` restarts only the `app` service against the new image; `postgres` (and the opt-in `caddy`
+proxy) keep running. See `DEPLOYMENT.md` §4 for the full flow.
