@@ -29,6 +29,14 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead, pricingGui
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null);
   const [copiedLinkQuoteId, setCopiedLinkQuoteId] = useState<string | null>(null);
+  const [expandedQuoteIds, setExpandedQuoteIds] = useState<Record<string, boolean>>({});
+
+  const toggleQuoteExpand = (quoteId: string) => {
+    setExpandedQuoteIds((prev) => ({
+      ...prev,
+      [quoteId]: !prev[quoteId],
+    }));
+  };
 
   const [newNote, setNewNote] = useState<string>('');
   const [copiedEmail, setCopiedEmail] = useState<boolean>(false);
@@ -706,9 +714,14 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead, pricingGui
                 {lead.quotes.map((q) => (
                   <div key={q.id} className="pt-3 first:pt-0 space-y-2">
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div
+                        onClick={() => toggleQuoteExpand(q.id)}
+                        className="cursor-pointer group flex-1"
+                      >
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#041632] text-sm">Rev {q.revision}</span>
+                          <span className="font-bold text-[#041632] text-sm group-hover:text-[#e77114] transition-colors">
+                            Rev {q.revision}
+                          </span>
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               q.status === 'DRAFT'
@@ -733,8 +746,96 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead, pricingGui
                           {q.qty.toLocaleString()} pcs @ {formatCurrency(q.unitPriceEur)} (Total: €{q.totalEur})
                         </span>
                       </div>
-                      <span className="text-[10px] text-[#75777e]">{timeAgo(q.createdAt)}</span>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-[#75777e]">{timeAgo(q.createdAt)}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleQuoteExpand(q.id)}
+                          className="p-1 rounded hover:bg-[#eff4ff] text-[#4f5e7e] hover:text-[#041632] transition-colors cursor-pointer flex items-center justify-center"
+                          title={expandedQuoteIds[q.id] ? 'Collapse revision details' : 'Expand revision details'}
+                          aria-label={expandedQuoteIds[q.id] ? 'Collapse revision details' : 'Expand revision details'}
+                        >
+                          <span
+                            className="material-symbols-outlined text-lg transition-transform duration-200 text-[#041632]"
+                            style={{ transform: expandedQuoteIds[q.id] ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                          >
+                            expand_more
+                          </span>
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Expandable Revision Details Drawer */}
+                    {expandedQuoteIds[q.id] && (
+                      <div className="mt-2.5 p-3.5 bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg space-y-2.5 text-[11px] animate-in fade-in zoom-in-98 duration-150">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 border-b border-[#e2e4ef] pb-2 text-[10px]">
+                          <div className="bg-white p-2 rounded border border-[#e2e4ef]">
+                            <span className="text-[#75777e] block uppercase font-semibold text-[9px]">Unit Price</span>
+                            <span className="font-bold text-[#041632] text-xs">€{Number(q.unitPriceEur).toFixed(4)} / pc</span>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-[#e2e4ef]">
+                            <span className="text-[#75777e] block uppercase font-semibold text-[9px]">Quantity</span>
+                            <span className="font-bold text-[#041632] text-xs">{q.qty.toLocaleString()} pcs</span>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-[#e2e4ef] col-span-2 sm:col-span-1">
+                            <span className="text-[#75777e] block uppercase font-semibold text-[9px]">Total Order Value</span>
+                            <span className="font-bold text-[#e77114] text-xs">€{q.totalEur}</span>
+                          </div>
+                        </div>
+
+                        {/* Packaging Specs */}
+                        <div>
+                          <span className="font-bold text-[#041632] block text-[10px] uppercase tracking-wider text-[#75777e]">
+                            Commercial Specs &amp; Materials
+                          </span>
+                          <p className="text-[#041632] mt-0.5 bg-white p-2 rounded border border-[#e2e4ef]">
+                            {q.specs || 'Standard factory pizza box specification.'}
+                          </p>
+                        </div>
+
+                        {/* Commercial Terms */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                          <div className="bg-white p-2 rounded border border-[#e2e4ef]">
+                            <span className="font-bold text-[#75777e] block text-[9px] uppercase">Payment Terms</span>
+                            <span className="text-[#041632] mt-0.5 block">{q.paymentTerms || 'Standard commercial net terms'}</span>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-[#e2e4ef]">
+                            <span className="font-bold text-[#75777e] block text-[9px] uppercase">Dispatch SLA</span>
+                            <span className="text-[#041632] mt-0.5 block">{q.dispatchSla || 'Standard guaranteed European hub dispatch'}</span>
+                          </div>
+                        </div>
+
+                        {/* Internal Notes */}
+                        {q.notes && (
+                          <div>
+                            <span className="font-bold text-[#75777e] block text-[9px] uppercase">Internal Procurement Notes</span>
+                            <p className="text-[#4f5e7e] italic mt-0.5 bg-white p-2 rounded border border-[#e2e4ef]">
+                              {q.notes}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Rejection Alert */}
+                        {q.status === 'REJECTED' && q.rejectionReason && (
+                          <div className="p-2 bg-red-50 border border-red-200 rounded text-red-800 text-[11px] flex items-start gap-1.5">
+                            <span className="material-symbols-outlined text-sm text-red-600 flex-shrink-0 mt-0.5">error</span>
+                            <div>
+                              <span className="font-bold block text-[10px] uppercase">Customer Decline Reason:</span>
+                              <span className="mt-0.5 block">{q.rejectionReason}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Audit Timestamps */}
+                        <div className="flex flex-wrap items-center justify-between text-[10px] text-[#75777e] pt-1 border-t border-[#e2e4ef]">
+                          <span>Created: {formatDateTime(q.createdAt)}</span>
+                          {q.sentAt && <span>Dispatched: {formatDateTime(q.sentAt)}</span>}
+                          {q.acceptedAt && <span className="text-emerald-700 font-bold">Accepted: {formatDateTime(q.acceptedAt)}</span>}
+                          {q.rejectedAt && <span className="text-red-700 font-bold">Declined: {formatDateTime(q.rejectedAt)}</span>}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Action buttons per quote status */}
                     <div className="flex flex-wrap gap-2 pt-1">
