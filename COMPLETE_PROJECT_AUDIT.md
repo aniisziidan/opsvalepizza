@@ -29,7 +29,7 @@
 | P2 | Missing `sitemap.xml` | ✅ Resolved | Added `app/sitemap.ts` (localized routes; excludes admin/api/proposals). |
 | P2 | Cron unauthenticated if `CRON_SECRET` unset | ✅ Resolved | `lib/cron/auth.ts` **fails closed** — 401 in production when the secret is unset. |
 | P2 | Middleware doesn't re-check `active`/role | ✅ Resolved | JWT callback re-validates the live `AdminUser` every 5 min and drops the session when the account is gone/inactive (`lib/auth.ts` + pure `lib/auth/sessionRevalidation.ts`); the admin layout re-checks `active` at the shell chokepoint and redirects stale sessions to login; session `maxAge` shortened to 12h. |
-| P3 | Node doc mismatch, redundant route stubs, PDF number/date localization, true E2E | ⚪ Open | Not addressed in this pass. |
+| P3 | Node doc mismatch, redundant route stubs, PDF number/date localization, anomaly emission, true E2E | ✅ Mostly resolved | **Node doc** reconciled (`DEPLOYMENT.md` = "20.x or 22.x", Dockerfile `node:20` — consistent). **Route stubs pruned** (`app/(marketing)/**`, `app/calculator`, `app/quote/page.tsx` removed; middleware already redirects every non-localized path — `app/quote/actions.ts` kept, it's the real submission action). **PDF locale** done (`lib/pdf/formatLocale.ts`). **Anomaly emission wired**: `lib/analytics/anomalyEmission.ts` (pure, unit-tested) maps health alerts → `AnalyticsAlertEvent`, dispatched by new `/api/cron/detect-anomalies` (deduped by `incidentKey`). **E2E**: pipeline scaffold `tests/e2e/pipeline.spec.ts` added (skip-by-default; needs seeded DB + admin creds). Also: DB **restore runbook** documented in `DEPLOYMENT.md`. |
 
 ---
 
@@ -380,7 +380,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 **Status:** 🟠 Works, but the shipped prod stack and scripts have real safety gaps.
 
 **Evidence & findings:**
-- `Dockerfile`: multi-stage, `node:20-alpine`, non-root `nextjs:nodejs`, standalone server, dedicated `uploads` dir. Good. (⚫ `DEPLOYMENT.md` prescribes `node:22` — mismatch.)
+- `Dockerfile`: multi-stage, `node:20-alpine`, non-root `nextjs:nodejs`, standalone server, dedicated `uploads` dir. Good. (✅ `DEPLOYMENT.md` now states "Node 20.x or 22.x LTS" — consistent with the `node:20` image.)
 - `docker-compose.prod.yml`: **only `app` + `postgres`** (app bound to `127.0.0.1:3010`, uploads volume, healthchecked DB). **No Caddy/reverse-proxy service** despite `docs/VPS_DEPLOYMENT_GUIDE.md` describing an `opsvale-caddy` TLS container. — **✅ RESOLVED**: a `caddy` service (automatic HTTPS via the `Caddyfile`) is now defined under an **opt-in `proxy` profile** (`docker compose --profile proxy up`), so it delivers TLS without clashing with an existing host proxy.
 - ~~🔴 **`deploy.sh` runs `prisma db push --accept-data-loss`**~~ — **✅ RESOLVED** *(pre-audit, `b5d6af9`)*: `deploy.sh` now runs `prisma migrate deploy` with a one-time auto-baseline; the schema history was consolidated into a single `0_init` migration (so analytics/notification models are now covered).
 - Health probe + retry loop in `deploy.sh`; image prune. Reasonable ops ergonomics.
@@ -429,7 +429,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 | README: "Planned: next-intl (i18n)" | Custom `lib/i18n` dictionary system; no `next-intl` dependency | ⚫ Outdated |
 | README: "Phases 0–2 complete… remaining: …" | All phases + Phase 8 (notifications) + Phase 9 (analytics) implemented | ⚫ Outdated (understates) |
 | Master plan: "24 tests… passing" | 156 tests passing | ⚫ Outdated |
-| DEPLOYMENT.md: `node:22-alpine` | `Dockerfile` uses `node:20-alpine` | ⚫ Mismatch |
+| DEPLOYMENT.md: "Node 20.x or 22.x LTS" | `Dockerfile` uses `node:20-alpine` | ✅ Consistent |
 | DEPLOYMENT.md: "`npx prisma migrate deploy`" | `deploy.sh` now uses `prisma migrate deploy` (+ auto-baseline) | 🟢 ✅ Now consistent |
 | VPS guide: "3 containers incl. `opsvale-caddy` TLS proxy" | Caddy now defined in `docker-compose.prod.yml` under opt-in `proxy` profile; VPS guide describes it as opt-in and its "Updates" step now pulls the GHCR image via `deploy.sh` instead of building on the server | 🟢 ✅ Reconciled |
 | DEPLOYMENT.md: robots disallows /admin,/proposals,/api | True in prod (`app/robots.ts`) | 🟢 Verified |
@@ -450,8 +450,8 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 - **Unwired GDPR retention** — `lib/analytics/retention.ts::pruneExpiredAnalyticsData` has zero importers.
 
 **Medium:**
-- **Redundant non-localized route stubs** — `app/(marketing)/{page,products,how-it-works,about}.tsx`, `app/calculator/page.tsx`, `app/quote/page.tsx`, and `app/page.tsx` are all `redirect()` shims to `/en/*`. `app/page.tsx` and `app/(marketing)/page.tsx` both target `/` (the build tolerates it, but it's redundant). Middleware already handles locale redirects, making most of these belt-and-suspenders duplication.
-- **Anomaly-detection notification types** defined but never emitted (no scheduler).
+- ~~**Redundant non-localized route stubs**~~ — **✅ RESOLVED**: `app/(marketing)/**`, `app/calculator/page.tsx`, and `app/quote/page.tsx` removed (middleware already redirects every non-localized path to `/{locale}/…`). A single root `app/page.tsx` redirect is kept as a belt-and-suspenders fallback; `app/quote/actions.ts` (the real submission server action) is retained.
+- ~~**Anomaly-detection notification types** defined but never emitted~~ — **✅ RESOLVED**: `lib/analytics/anomalyEmission.ts` maps computed health alerts → `AnalyticsAlertEvent`s (unit-tested), emitted by the new `/api/cron/detect-anomalies` scheduler with `incidentKey` dedup.
 - **Logistics components not fed into landed cost** (data captured but unused by pricing).
 
 **Low / Informational:**
@@ -538,7 +538,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 7. **P2 — Missing `sitemap.xml`** — **✅ RESOLVED** (`app/sitemap.ts`). Robots stub-path allow-list still open (harmless).
 8. **P2 — Middleware** doesn't re-check `active`/role — **✅ RESOLVED**: JWT callback re-validates against the DB every 5 min (drops session on inactive/deleted), admin layout re-checks `active` and redirects stale sessions, session `maxAge` cut to 12h (`lib/auth.ts`, `lib/auth/sessionRevalidation.ts`, `app/admin/layout.tsx`).
 9. **P2 — Cron cleanup** unauthenticated if `CRON_SECRET` unset — **✅ RESOLVED**: fails closed in production (`lib/cron/auth.ts`).
-10. **P3 — Node version doc mismatch (20 vs 22)** ⚪ open; **no automated DB backup** — **✅ RESOLVED** (deploy-time `pg_dump`).
+10. **P3 — Node version doc mismatch (20 vs 22)** ✅ resolved (`DEPLOYMENT.md` now says "20.x or 22.x", Dockerfile `node:20`); **no automated DB backup** — **✅ RESOLVED** (deploy-time `pg_dump`, restore runbook documented).
 
 ---
 
@@ -561,7 +561,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 10. ✅ **DONE** — `DEPLOYMENT.md` (migration command, TLS options, new cron), README (i18n = custom, phase status, hardening pass), and the VPS guide (Caddy described as opt-in; "Updates" step now pulls the GHCR image via `deploy.sh` instead of building on the server) are reconciled with the shipped reality.
 
 **P3 — nice to have**
-11. ⚪ **PARTIAL** — ✅ localize PDF number/date formatting **DONE** (`lib/pdf/formatLocale.ts`). Still open: real Playwright E2E for acquisition→dispatch→accept; wire anomaly-detection emission; remove redundant non-localized route stubs.
+11. ✅ **MOSTLY DONE** — ✅ localize PDF number/date formatting (`lib/pdf/formatLocale.ts`); ✅ node doc reconciled (20.x/22.x); ✅ redundant non-localized route stubs pruned; ✅ anomaly-detection emission wired (`lib/analytics/anomalyEmission.ts` + `/api/cron/detect-anomalies`, deduped); ✅ DB restore runbook documented. Remaining: the acquisition→dispatch→accept Playwright E2E is committed as a **skip-by-default scaffold** (`tests/e2e/pipeline.spec.ts`) — it needs a seeded Postgres + admin creds to run for real; and the shared rate-limit store (Redis) stays deferred.
 
 ---
 
@@ -616,6 +616,6 @@ The original score was pulled down by *operational/deployment* and *GDPR/complia
 7. **P1** — ✅ Enforce legal validation at boot. **DONE** — ⚠️ still override placeholder entity/cert values via env.
 8. **P2** — ✅ `sitemap.ts` **DONE**; ✅ re-validate `active` in session **DONE**; ✅ correct robots allow-list **DONE** (`allow: '/'`).
 9. **P2** — ✅ **DONE** — `DEPLOYMENT.md`, README (i18n, phases, hardening pass), and the VPS guide (opt-in Caddy; pull-not-build updates) reconciled.
-10. **P3** — ⚪ **PARTIAL** — ✅ localize PDF number/date formatting **DONE**; still open: real Playwright E2E; anomaly emission; prune route stubs.
+10. **P3** — ✅ **MOSTLY DONE** — ✅ PDF locale formatting; ✅ node doc reconciled; ✅ route stubs pruned; ✅ anomaly emission wired (`/api/cron/detect-anomalies`); ✅ DB restore runbook. Remaining: real seeded-DB Playwright run of the committed pipeline scaffold; Redis rate-limit store (deferred).
 
 *End of audit. No project code was modified; this document is the sole deliverable.*
