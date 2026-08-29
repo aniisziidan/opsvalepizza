@@ -13,7 +13,10 @@ import type { NextAuthConfig } from 'next-auth';
  */
 export const authConfig = {
   trustHost: true,
-  session: { strategy: 'jwt' },
+  // 12h max lifetime bounds how long a token can outlive a deactivated account
+  // in the worst case; `lib/auth.ts` additionally re-validates against the DB
+  // every few minutes. `updateAge` slides the expiry on activity.
+  session: { strategy: 'jwt', maxAge: 12 * 60 * 60, updateAge: 60 * 60 },
   pages: { signIn: '/admin/login' },
   // Providers are attached in lib/auth.ts (the Credentials provider needs
   // Prisma, which is not Edge-safe). Middleware only needs the callback below.

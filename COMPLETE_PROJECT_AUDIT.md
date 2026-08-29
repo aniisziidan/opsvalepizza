@@ -28,7 +28,7 @@
 | P1 | Legal certification flags default `true` | ✅ Resolved | All evidence flags opt-in (`=== 'true'`); `validateProductionLegalCompliance` runs at boot via `instrumentation.ts`. |
 | P2 | Missing `sitemap.xml` | ✅ Resolved | Added `app/sitemap.ts` (localized routes; excludes admin/api/proposals). |
 | P2 | Cron unauthenticated if `CRON_SECRET` unset | ✅ Resolved | `lib/cron/auth.ts` **fails closed** — 401 in production when the secret is unset. |
-| P2 | Middleware doesn't re-check `active`/role | ⚪ Open | Still relies on `requireAdmin` re-checking `active` on every mutation (defense-in-depth gap, not privilege escalation). |
+| P2 | Middleware doesn't re-check `active`/role | ✅ Resolved | JWT callback re-validates the live `AdminUser` every 5 min and drops the session when the account is gone/inactive (`lib/auth.ts` + pure `lib/auth/sessionRevalidation.ts`); the admin layout re-checks `active` at the shell chokepoint and redirects stale sessions to login; session `maxAge` shortened to 12h. |
 | P3 | Node doc mismatch, redundant route stubs, PDF number/date localization, true E2E | ⚪ Open | Not addressed in this pass. |
 
 ---
@@ -304,7 +304,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 
 **Evidence:** Auth.js v5 JWT sessions; `hashPassword`/`verifyPassword` bcrypt cost-12; a fixed `DUMMY_HASH` bcrypt compare on the no-user/inactive path to **equalize timing** and mitigate user enumeration. `requireAdmin`/`requireSuperAdmin` re-load the admin from DB and reject inactive accounts and insufficient roles. Governance (`app/admin/settings/actions.ts`) implements **self-demotion**, **self-disable**, and **last-active-SUPER_ADMIN** protections, plus `AdminAuditLog` entries for every lifecycle change; own-password change verifies the current password.
 
-**Nuance (🟠):** the Edge middleware `authorized` callback only checks `!!auth?.user` (logged-in), **not** `active` or `role`. A user deactivated *after* issuing a JWT can still load admin **pages** until a server action/query calls `requireAdmin` (which does re-check `active`). Since all mutations go through `requireAdmin`, this is a defense-in-depth gap (stale read access to page shells), not a privilege-escalation hole. Recommend re-validating `active` in the JWT/session callback or shortening session lifetime.
+**Nuance (🟢 — ✅ RESOLVED 2026-08-29):** the Edge middleware `authorized` callback only checks `!!auth?.user` (logged-in), **not** `active` or `role` — the Edge runtime cannot query Prisma. Previously a user deactivated *after* issuing a JWT could still load admin **page shells** until a server action/query called `requireAdmin`. This is now closed in three layers: (1) the Node-runtime `jwt` callback in `lib/auth.ts` re-reads the live `AdminUser` at most every 5 min (`needsRevalidation` in the pure, unit-tested `lib/auth/sessionRevalidation.ts`) and returns `null` — invalidating the session — when the account is missing or inactive (fails *open* on transient DB errors so a database blip doesn't log everyone out); (2) `app/admin/layout.tsx`, the single shell chokepoint, re-checks `active` on every render and `redirect()`s stale sessions to `/admin/login`; (3) session `maxAge` is bounded to 12h. All mutations still additionally go through `requireAdmin`.
 
 ---
 
@@ -536,7 +536,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 5. **P1 — Rate limiting** in-memory, duplicated, spoofable — **✅ RESOLVED for duplication + spoofing** (single TRUST_PROXY-aware limiter). Shared store (Redis) still open.
 6. **P1 — Legal claims** default `true` without verification — **✅ RESOLVED (mechanism)**: flags opt-in + boot validation. ⚠️ Placeholder entity details must still be overridden with verified values.
 7. **P2 — Missing `sitemap.xml`** — **✅ RESOLVED** (`app/sitemap.ts`). Robots stub-path allow-list still open (harmless).
-8. **P2 — Middleware** doesn't re-check `active`/role — ⚪ **OPEN** (stale JWT can view admin page shells until a server action re-validates via `requireAdmin`).
+8. **P2 — Middleware** doesn't re-check `active`/role — **✅ RESOLVED**: JWT callback re-validates against the DB every 5 min (drops session on inactive/deleted), admin layout re-checks `active` and redirects stale sessions, session `maxAge` cut to 12h (`lib/auth.ts`, `lib/auth/sessionRevalidation.ts`, `app/admin/layout.tsx`).
 9. **P2 — Cron cleanup** unauthenticated if `CRON_SECRET` unset — **✅ RESOLVED**: fails closed in production (`lib/cron/auth.ts`).
 10. **P3 — Node version doc mismatch (20 vs 22)** ⚪ open; **no automated DB backup** — **✅ RESOLVED** (deploy-time `pg_dump`).
 
@@ -557,7 +557,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 
 **P2 — important**
 8. ✅ ~~Add `app/sitemap.ts`~~ — **DONE**. Robots allow-list → localized paths still open (harmless).
-9. ⚪ **OPEN** — Re-validate `active`/role in the session/JWT callback (or shorten session TTL).
+9. ✅ ~~Re-validate `active`/role in the session/JWT callback (or shorten session TTL).~~ — **DONE**: periodic JWT re-validation + layout `active` re-check + 12h `maxAge`.
 10. ⚪ **PARTIAL** — `DEPLOYMENT.md` updated (migration command, TLS options, new cron). README/VPS-guide reconciliation (i18n = custom, phase status, node version, test count, container set) still pending.
 
 **P3 — nice to have**
@@ -572,7 +572,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 | Architecture | 9 | Clean route/domain split, server-only pricing, edge-safe auth |
 | Security | 8 *(was 6)* | Good AuthN/AuthZ/validation; **nonce CSP on dynamic routes, unified TRUST_PROXY-aware rate limiter, fail-closed cron** (§0). In-memory rate-limit store remains. |
 | Authentication | 9 | JWT + bcrypt-12 + timing-safe + governance protections |
-| Authorization | 8 | `requireAdmin`/RBAC on all mutations; middleware doesn't re-check active |
+| Authorization | 9 *(was 8)* | `requireAdmin`/RBAC on all mutations; **session now re-validates `active` (JWT callback every 5 min + layout shell re-check + 12h `maxAge`)**, closing the stale-JWT page-shell gap |
 | Data Integrity | 8 | Transactions, versioning, audit, idempotency — but deploy uses `db push --accept-data-loss` |
 | Privacy / GDPR | 7 *(was 4)* | **Server-side consent gate + wired retention purge** (§0); evidence flags opt-in + boot validation. Placeholder legal entity details must still be overridden with verified values. |
 | Error Handling | 9 | Digest-based boundaries, no leakage, recovery actions |
@@ -584,7 +584,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 | Documentation | 5 | Thorough but materially outdated/contradictory in places |
 | Maintainability | 8 | Clean code, no debt markers, typed; some duplication (rate limiters, route stubs) |
 
-**Overall Production Readiness Score: 66 / 100 (original) → ~82 / 100 (post-remediation, 2026-08-29).**
+**Overall Production Readiness Score: 66 / 100 (original) → ~83 / 100 (post-remediation, 2026-08-29).**
 
 The original score was pulled down by *operational/deployment* and *GDPR/compliance* readiness. The remediation pass (§0) lifts Security, Privacy/GDPR, and Deployment materially. Remaining drags: placeholder legal entity values, in-memory rate-limit store (single-instance), no committed E2E, and minor doc reconciliation — none of which block a controlled single-instance launch once the legal values and `CRON_SECRET`/TLS path are set.
 
@@ -614,7 +614,7 @@ The original score was pulled down by *operational/deployment* and *GDPR/complia
 5. **P1** — ✅ Remove `unsafe-inline` from CSP (nonce). **DONE (hybrid — dynamic routes)**.
 6. **P1** — ✅ Unify rate limiting, TRUST_PROXY-aware; fail-closed cron. **DONE** (shared Redis store deferred).
 7. **P1** — ✅ Enforce legal validation at boot. **DONE** — ⚠️ still override placeholder entity/cert values via env.
-8. **P2** — ✅ `sitemap.ts` **DONE**; ⚪ correct robots allow-list + re-validate `active` in session still open.
+8. **P2** — ✅ `sitemap.ts` **DONE**; ✅ re-validate `active` in session **DONE**; ⚪ correct robots allow-list still open (harmless).
 9. **P2** — ⚪ **PARTIAL** — `DEPLOYMENT.md` reconciled; README/VPS-guide (i18n, phases, node, test count) pending.
 10. **P3** — ⚪ **OPEN** — Real Playwright E2E; anomaly emission; prune route stubs; localize PDF formatting.
 
