@@ -3,6 +3,11 @@ import { getLegalConfig } from '@/lib/legal/config';
 import { getDictionary } from '@/lib/i18n/getDictionary';
 import { isValidLocale, DEFAULT_LOCALE, Locale } from '@/lib/i18n/config';
 
+// Render at request time so statutory legal/entity details come from the live
+// environment (COMPANY_* / LEGAL_* env vars) instead of being baked in at build.
+// Without this the page is prerendered and the build-time (placeholder) values stick.
+export const dynamic = 'force-dynamic';
+
 interface PrivacyPageProps {
   params: Promise<{ locale: string }>;
 }
