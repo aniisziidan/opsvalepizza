@@ -11,8 +11,9 @@ Originally scaffolded as a UI prototype in Google Stitch / AI Studio, now being 
 - **PostgreSQL 16** + **Prisma** (ORM, pinned to stable 6.x)
 - **Auth.js v5** (NextAuth) — credentials, edge-safe middleware guard on `/admin/**`
 - **Zod** (shared client/server validation) · **Vitest** (tests)
-- Planned: next-intl (i18n), MinIO/S3 (files), Nodemailer/SMTP (email), SheetJS (Excel)
-- **Deployment target:** Docker Compose (web + postgres + minio + nginx) on a Hostinger VPS
+- **i18n:** custom typed dictionary system in `lib/i18n` (EN/DE/FR/IT/ES) — not next-intl
+- **Files:** local disk / S3 / R2 / MinIO storage adapter · **Email:** Resend API or SMTP (Nodemailer) · **Excel:** SheetJS (`xlsx`)
+- **Deployment:** GitHub Actions builds a Docker image → GHCR → the Hostinger VPS pulls it via `deploy.sh` (see [AGENTS.md](./AGENTS.md))
 
 ## Project layout
 
@@ -74,6 +75,20 @@ docs/superpowers/plans/   implementation plans (master + per-phase)
 - `npm run lint` — ESLint
 - `npm test` — Vitest
 
+## Deployment
+
+Fast, build-off-the-server deploys (see [AGENTS.md](./AGENTS.md) for the full agreement):
+
+1. Branch → PR → **merge to `main`**. Merging triggers **GitHub Actions** (`.github/workflows/deploy.yml`)
+   which builds the Docker image and pushes it to **GHCR** (`ghcr.io/aniisziidan/opsvalepizza`, private).
+2. On the VPS (`/opt/opsvale`): **`bash deploy.sh`** pulls the prebuilt image, **backs up the database**,
+   runs **`prisma migrate deploy`**, and health-checks. The server never builds the image.
+3. Rollback: `IMAGE_TAG=<git-sha> bash deploy.sh`.
+
 ## Build status
 
-Phases 0–2 complete (Next.js migration, DB + auth boundary, server-side pricing engine + calculator API). Remaining: quote persistence + files + email, CRM, pricing/Excel admin, i18n + legal, analytics + VPS deploy. Progress and commit references are tracked in the master plan roadmap.
+All originally planned phases (0–7) plus a notification center and visitor analytics are implemented:
+multilingual public site, calculator, quote flow, CRM, quote/proposal lifecycle, pricing + Excel admin,
+logistics, i18n, legal/consent, analytics, and CI/CD image delivery. Build is green and the Vitest suite
+passes. For a full, evidence-based status — including known gaps and hardening recommendations — see
+[`COMPLETE_PROJECT_AUDIT.md`](./COMPLETE_PROJECT_AUDIT.md).
