@@ -34,11 +34,12 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
     { id: 'analytics', label: 'Pipeline & Sales KPIs', icon: 'monitoring', href: '/admin/analytics' },
     {
       id: 'leads',
-      label: 'Leads & Accounts',
+      label: 'Leads',
       icon: 'group',
       badge: newLeadsCount > 0 ? `${newLeadsCount}` : undefined,
       href: '/admin/leads',
     },
+    { id: 'crm', label: 'CRM Contacts', icon: 'contacts_product', href: '/admin/crm' },
     {
       id: 'quotes',
       label: 'Quotes',
@@ -99,7 +100,9 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
         {/* Navigation Items */}
         <nav className="px-3 space-y-1 font-mono-data text-xs">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/admin/dashboard' && pathname.startsWith(item.href + '/'));
             return (
               <Link
                 key={item.id}

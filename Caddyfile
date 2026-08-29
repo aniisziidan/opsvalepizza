@@ -20,9 +20,14 @@
     }
     header @static Cache-Control "public, max-age=31536000, immutable"
 
-    # Reverse proxy to Next.js application container
+    # Reverse proxy to Next.js application container.
+    # Cloudflare fronts this origin (DNS proxied / orange-cloud), so it supplies:
+    #   - CF-Connecting-IP : the true visitor IP -> forwarded as X-Forwarded-For for rate limiting
+    #   - CF-IPCountry     : ISO country code    -> passed through unchanged; read by lib/analytics/geoResolver
+    # Production traffic MUST arrive via Cloudflare — lock the origin firewall to Cloudflare's IP
+    # ranges so nothing can hit the origin directly and spoof these headers.
     reverse_proxy app:3000 {
-        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-For {http.request.header.Cf-Connecting-Ip}
         header_up X-Forwarded-Proto {scheme}
         header_up Host {host}
     }
