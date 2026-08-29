@@ -59,42 +59,31 @@ npx prisma db seed
 
 ---
 
-## 4. Production Build & Execution
+## 4. Build & Deploy (Continuous Deployment via GHCR)
 
-### Standalone Node.js Build
+**The image is built by GitHub Actions, not on the VPS.** See `AGENTS.md` for the full agreement.
+
+**Flow:** branch → PR → **merge to `main`** → `.github/workflows/deploy.yml` builds the multi-stage
+`Dockerfile` (Node 20 Alpine, standalone output, non-root) and pushes it to the **private GHCR package**
+`ghcr.io/aniisziidan/opsvalepizza` tagged `:latest` and `:<git-sha>`.
+
+**On the VPS** (`/opt/opsvale`):
+
 ```bash
-# 1. Install dependencies
-npm ci
+# One-time: authenticate to the private registry (token needs read:packages)
+docker login ghcr.io -u aniisziidan
 
-# 2. Compile standalone production build
-npm run build
+# Every deploy — pulls the prebuilt image, backs up the DB, runs migrations, health-checks:
+bash deploy.sh
 
-# 3. Start production server
-NODE_ENV=production node .next/standalone/server.js
+# Roll back to a specific build:
+IMAGE_TAG=<git-sha> bash deploy.sh
 ```
 
-### Docker Deployment
-```dockerfile
-FROM node:22-alpine AS builder
-WORKDIR /app
-COPY package*.json prisma ./
-RUN npm ci
-COPY . .
-RUN npx prisma generate
-RUN npm run build
-
-FROM node:22-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3000
-
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
-EXPOSE 3000
-CMD ["node", "server.js"]
-```
+`deploy.sh` does NOT build on the server. It: pulls the GHCR image → `pg_dump` backup to `backups/`
+(last 10 kept) → `prisma migrate deploy` (with a one-time auto-baseline for the original db-push
+database) → `/api/health` probe. The compose file `docker-compose.prod.yml` references the GHCR image
+via `image:` (override with `IMAGE_TAG`).
 
 ---
 
