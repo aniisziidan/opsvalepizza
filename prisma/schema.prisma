@@ -142,6 +142,7 @@ enum PricingEntityType {
   LANDED_COST
   PRICING_RULE
   PUBLIC_PRICE_RANGE
+  LOGISTICS_COST
 }
 
 enum PricingAuditAction {
@@ -295,6 +296,14 @@ model CalculatorSnapshot {
   markupRuleId        String?
   publicPriceRangeId  String?
   pricingVersion      String?
+  productCostEur        Decimal? @db.Decimal(10, 4)
+  logisticsCostId       String?
+  logisticsCorridorName String?
+  freightEur            Decimal? @db.Decimal(10, 4)
+  inlandEur             Decimal? @db.Decimal(10, 4)
+  otherEur             Decimal? @db.Decimal(10, 4)
+  logisticsTotalEur     Decimal? @db.Decimal(10, 4)
+  effectiveLandedEur    Decimal? @db.Decimal(10, 4)
   createdAt           DateTime @default(now())
 }
 
@@ -339,6 +348,7 @@ model Quote {
   paymentTerms    String?
   dispatchSla     String?
   snapshot        Json?
+  pricingSnapshot Json?
   accessToken     String?       @unique
   dispatchReqAt   DateTime?
   sentAt          DateTime?

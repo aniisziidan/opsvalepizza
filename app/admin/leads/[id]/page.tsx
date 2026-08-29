@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { LeadDetailView } from '@/components/admin/LeadDetailView';
-import { getLeadDetail } from '@/lib/admin/queries';
+import { getLeadDetail, getQuotePricingGuidance } from '@/lib/admin/queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,5 +16,7 @@ export default async function LeadDetailPage({
     notFound();
   }
 
-  return <LeadDetailView lead={lead} />;
+  const pricingGuidance = await getQuotePricingGuidance(id).catch(() => null);
+
+  return <LeadDetailView lead={lead} pricingGuidance={pricingGuidance} />;
 }

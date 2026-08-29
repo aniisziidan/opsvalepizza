@@ -25,4 +25,30 @@ describe('resolvePublicRange', () => {
     const r = resolvePublicRange({ ...base, landedCosts: [] });
     expect(r.available).toBe(false);
   });
+  it('adds active-corridor logistics to the landed cost before markup', () => {
+    const r = resolvePublicRange({
+      ...base,
+      logistics: { id: 'c-de', name: 'Rotterdam', freightEur: 0.02, inlandEur: 0.01, otherEur: 0.0 },
+    });
+    // landed = 0.18 + 0.03 = 0.21
+    expect(r.minEur).toBeCloseTo(0.21 * 1.2, 3);
+    expect(r.maxEur).toBeCloseTo(0.21 * 1.3, 3);
+    expect(r.source).toBe('COMPUTED');
+    expect(r.breakdown?.landedEur).toBeCloseTo(0.21, 4);
+  });
+  it('ignores logistics on the approved-override path', () => {
+    const r = resolvePublicRange({
+      ...base,
+      approvedRange: { minEur: 0.22, maxEur: 0.25 },
+      logistics: { id: 'c-de', name: 'x', freightEur: 0.9, inlandEur: 0, otherEur: 0 },
+    });
+    expect(r.minEur).toBeCloseTo(0.22); expect(r.maxEur).toBeCloseTo(0.25);
+    expect(r.source).toBe('APPROVED_RANGE');
+    expect(r.breakdown).toBeNull();
+  });
+  it('is product-only with a flag when no corridor is supplied', () => {
+    const r = resolvePublicRange(base);
+    expect(r.breakdown?.noLogisticsConfigured).toBe(true);
+    expect(r.breakdown?.landedEur).toBeCloseTo(0.18, 4);
+  });
 });

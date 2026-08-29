@@ -21,6 +21,7 @@ import {
 } from '@/app/admin/pricing/excel-actions';
 import { ExcelPreviewResult, BulkCommitPayload, ImportMode } from '@/lib/excel/types';
 import { formatCurrency, formatDateTime } from '@/lib/admin/formatters';
+import { selectActiveCorridor, effectiveLandedCost, type CorridorCandidate } from '@/lib/pricing/logistics';
 
 interface PricingManagementProps {
   landedCosts: LandedCostRow[];
@@ -29,6 +30,7 @@ interface PricingManagementProps {
   auditLogs: PricingAuditLogRow[];
   countries: CountryOption[];
   boxConfigs: BoxConfigOption[];
+  corridorCandidates: CorridorCandidate[];
 }
 
 export const PricingManagement: React.FC<PricingManagementProps> = ({
@@ -38,6 +40,7 @@ export const PricingManagement: React.FC<PricingManagementProps> = ({
   auditLogs,
   countries,
   boxConfigs,
+  corridorCandidates,
 }) => {
   const [activeTab, setActiveTab] = useState<'landed' | 'rules' | 'ranges' | 'audit'>('landed');
   const [isPending, startTransition] = useTransition();
@@ -569,8 +572,24 @@ export const PricingManagement: React.FC<PricingManagementProps> = ({
                         {lc.qtyTierMin.toLocaleString()}
                         {lc.qtyTierMax ? ` – ${lc.qtyTierMax.toLocaleString()}` : '+'} pcs
                       </td>
-                      <td className="py-3 px-4 font-bold text-[#e77114] text-sm">
-                        {formatCurrency(lc.costEur)}
+                      <td className="py-3 px-4 text-sm">
+                        {(() => {
+                          const b = effectiveLandedCost(
+                            Number(lc.costEur),
+                            selectActiveCorridor(corridorCandidates, lc.countryId),
+                          );
+                          return (
+                            <div className="space-y-0.5">
+                              <div className="font-bold text-[#e77114]">{formatCurrency(b.landedEur)}</div>
+                              <div className="text-[10px] text-[#75777e]">
+                                product {formatCurrency(b.productEur)}
+                                {b.noLogisticsConfigured
+                                  ? ' • no freight'
+                                  : ` + logistics ${formatCurrency(b.logisticsEur)}`}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4 text-[11px] text-[#75777e]">
                         {new Date(lc.effectiveFrom).toLocaleDateString('en-GB')}

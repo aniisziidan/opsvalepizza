@@ -10,9 +10,19 @@ import { timeAgo, formatDateTime, formatCurrency, formatNumber } from '@/lib/adm
 
 interface LeadDetailViewProps {
   lead: LeadDetailData;
+  pricingGuidance?: {
+    available: boolean;
+    countryName: string;
+    compact: { label: string; valueEur: number }[];
+    markupMinPct: number;
+    markupMaxPct: number;
+    suggestedMinEur: number;
+    suggestedMaxEur: number;
+    noLogisticsConfigured: boolean;
+  } | null;
 }
 
-export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead }) => {
+export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead, pricingGuidance }) => {
   const [isPending, startTransition] = useTransition();
   const [statusError, setStatusError] = useState<string | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
@@ -644,6 +654,35 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead }) => {
                   className="w-full bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-2 text-xs"
                 />
               </div>
+
+              {pricingGuidance?.available && (
+                <div className="rounded-lg border border-[#c5c6ce] bg-[#f8f9ff] p-4 text-xs space-y-1">
+                  <p className="font-semibold text-[#041632] uppercase tracking-wider">Pricing guidance</p>
+                  {pricingGuidance.compact.map((l) => (
+                    <div key={l.label} className="flex justify-between">
+                      <span className="text-[#4f5e7e]">{l.label}</span>
+                      <span className="font-bold text-[#041632]">€{l.valueEur.toFixed(4)}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between border-t border-[#c5c6ce]/50 pt-1">
+                    <span className="text-[#4f5e7e]">Markup</span>
+                    <span className="font-bold text-[#041632]">
+                      {pricingGuidance.markupMinPct}%–{pricingGuidance.markupMaxPct}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#4f5e7e]">Suggested unit price</span>
+                    <span className="font-bold text-[#e77114]">
+                      €{pricingGuidance.suggestedMinEur.toFixed(4)}–€{pricingGuidance.suggestedMaxEur.toFixed(4)}
+                    </span>
+                  </div>
+                  {pricingGuidance.noLogisticsConfigured && (
+                    <p className="text-[#b3261e]">
+                      No logistics corridor configured for {pricingGuidance.countryName} — freight €0 applied.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <button
                 type="submit"

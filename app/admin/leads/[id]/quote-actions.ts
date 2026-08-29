@@ -10,6 +10,7 @@ import { buildQuoteProposalEmail } from '@/lib/email/sendQuoteProposal';
 import { processOutboxEmail } from '@/lib/email/outbox';
 import { formatBoxSpec } from '@/lib/admin/formatters';
 import { DEFAULT_FROM_EMAIL } from '@/lib/email/transporter';
+import { getQuotePricingGuidance } from '@/lib/admin/queries';
 
 const quoteInputSchema = z.object({
   unitPriceEur: z
@@ -36,6 +37,23 @@ export async function createQuote(leadId: string, rawData: unknown) {
 
   const data = quoteInputSchema.parse(rawData);
   const priceDecimal = new Prisma.Decimal(Number(data.unitPriceEur).toFixed(4));
+
+  // Freeze the internal product-vs-logistics breakdown used as guidance for this
+  // revision (never shown to the customer). Best-effort: pricing config may be absent.
+  const guidance = await getQuotePricingGuidance(leadId).catch(() => null);
+  const pricingSnapshot = guidance
+    ? {
+        productCostEur: guidance.compact.find((l) => l.label === 'Factory / Product')?.valueEur ?? null,
+        logisticsTotalEur: guidance.compact.find((l) => l.label.startsWith('Logistics to'))?.valueEur ?? null,
+        effectiveLandedEur: guidance.compact.find((l) => l.label === 'Landed Cost')?.valueEur ?? null,
+        markupMinPct: guidance.markupMinPct,
+        markupMaxPct: guidance.markupMaxPct,
+        suggestedMinEur: guidance.suggestedMinEur,
+        suggestedMaxEur: guidance.suggestedMaxEur,
+        noLogisticsConfigured: guidance.noLogisticsConfigured,
+        capturedAt: new Date().toISOString(),
+      }
+    : undefined;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -68,6 +86,7 @@ export async function createQuote(leadId: string, rawData: unknown) {
             paymentTerms: data.paymentTerms?.trim() || null,
             dispatchSla: data.dispatchSla?.trim() || null,
             status: 'DRAFT',
+            pricingSnapshot: pricingSnapshot as Prisma.InputJsonValue | undefined,
           },
         });
 

@@ -70,7 +70,11 @@ export const LogisticsHubs: React.FC<LogisticsHubsProps> = ({ corridors, countri
 
     startTransition(async () => {
       try {
-        await createLogisticsCorridor(formData);
+        const res = await createLogisticsCorridor(formData);
+        if (!res.success) {
+          setErrorMsg(res.error || 'Failed to create logistics corridor');
+          return;
+        }
         setShowAddModal(false);
         setSuccessMsg('New logistics corridor successfully established.');
       } catch (err: any) {
@@ -95,7 +99,11 @@ export const LogisticsHubs: React.FC<LogisticsHubsProps> = ({ corridors, countri
 
     startTransition(async () => {
       try {
-        await updateLogisticsCorridor(editingCorridor.id, formData);
+        const res = await updateLogisticsCorridor(editingCorridor.id, formData);
+        if (!res.success) {
+          setErrorMsg(res.error || 'Failed to update logistics corridor');
+          return;
+        }
         setEditingCorridor(null);
         setSuccessMsg('Logistics corridor routing and rates updated.');
       } catch (err: any) {
@@ -118,7 +126,11 @@ export const LogisticsHubs: React.FC<LogisticsHubsProps> = ({ corridors, countri
 
     startTransition(async () => {
       try {
-        await toggleLogisticsCorridorActive(id, !currentActive);
+        const res = await toggleLogisticsCorridorActive(id, !currentActive);
+        if (!res.success) {
+          setErrorMsg(res.error || 'Failed to toggle corridor status');
+          return;
+        }
         setSuccessMsg(`Corridor status changed to ${!currentActive ? 'Active' : 'Inactive'}.`);
       } catch (err: any) {
         if (
