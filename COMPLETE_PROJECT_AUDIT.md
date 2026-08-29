@@ -8,6 +8,31 @@
 
 ---
 
+## 0. Remediation Log (2026-08-29)
+
+> Added after the original audit. The high-priority findings below have since been addressed on
+> branch `harden/audit-p1-items` (**PR #4**). The rest of this document is preserved as the
+> original forensic snapshot; individual findings are annotated inline with **✅ RESOLVED**.
+> Post-remediation: **177 tests passing** (one pre-existing health-probe test fails only when no
+> local Postgres is available — environmental); `next build` succeeds; `tsc --noEmit` clean.
+
+| # | Original finding | Status | Resolution |
+|---|---|---|---|
+| P0 | `deploy.sh` used `db push --accept-data-loss` | ✅ Resolved *(pre-audit, `b5d6af9`)* | `prisma migrate deploy` + one-time auto-baseline; migrations consolidated to `0_init`. |
+| P0 | No automated DB backup | ✅ Resolved *(pre-audit, `b5d6af9`)* | `deploy.sh` runs `pg_dump` (gzip, keeps last 10) before every schema change. |
+| P0 | No reverse-proxy/TLS in prod stack | ✅ Addressed | `Caddyfile` (automatic HTTPS) wired into `docker-compose.prod.yml` under an **opt-in `proxy` profile**; default assumption is an external host proxy (app binds `127.0.0.1:3010`). |
+| P1 | Analytics consent client-side only | ✅ Resolved | `hasServerConsent()` gate in `/api/analytics/collect` drops non-consented events (202) before any DB write. |
+| P1 | Retention prune unwired | ✅ Resolved | New `/api/cron/prune-analytics` route runs `pruneExpiredAnalyticsData`. |
+| P1 | CSP retains `script-src 'unsafe-inline'` | ✅ Resolved (hybrid) | Per-request nonce + `strict-dynamic` on dynamic routes (`/admin/**`, `/proposals/**`); SSG public pages keep `unsafe-inline` (Next can't nonce prebuilt inline scripts) but drop `unsafe-eval`. Browser-verified: 0 CSP violations. Added `object-src 'none'`. |
+| P1 | Rate limiter duplicated + spoofable | ✅ Resolved | Removed `lib/security` limiter; single `lib/ratelimit` with **TRUST_PROXY-aware** `getClientIp`. |
+| P1 | Legal certification flags default `true` | ✅ Resolved | All evidence flags opt-in (`=== 'true'`); `validateProductionLegalCompliance` runs at boot via `instrumentation.ts`. |
+| P2 | Missing `sitemap.xml` | ✅ Resolved | Added `app/sitemap.ts` (localized routes; excludes admin/api/proposals). |
+| P2 | Cron unauthenticated if `CRON_SECRET` unset | ✅ Resolved | `lib/cron/auth.ts` **fails closed** — 401 in production when the secret is unset. |
+| P2 | Middleware doesn't re-check `active`/role | ⚪ Open | Still relies on `requireAdmin` re-checking `active` on every mutation (defense-in-depth gap, not privilege escalation). |
+| P3 | Node doc mismatch, redundant route stubs, PDF number/date localization, true E2E | ⚪ Open | Not addressed in this pass. |
+
+---
+
 ## 1. Executive Summary
 
 OpsVale is a **Next.js 15 / React 19 / Prisma 6 / PostgreSQL** monorepo that implements a multilingual public acquisition website **and** a secure internal B2B operations platform for wholesale pizza-box procurement. The build is green, the test suite (156 tests) passes, and the implementation has advanced **far beyond the documented "Phases 0–2 complete" state** — in reality it covers all seven planned phases plus a Phase 8 (notifications) and Phase 9 (visitor analytics) that were never in the original master plan.
@@ -16,15 +41,19 @@ OpsVale is a **Next.js 15 / React 19 / Prisma 6 / PostgreSQL** monorepo that imp
 
 **However, "green build + passing tests" is not "production ready."** The audit found concrete gaps between what is *documented*, what is *built*, what is *wired*, and what is *operationally safe*:
 
-- **Deployment integrity risk (P0):** `deploy.sh` applies schema with `prisma db push --accept-data-loss` even though real migrations exist and `DEPLOYMENT.md` says to use `prisma migrate deploy`. This can silently drop production data.
-- **Reverse proxy not in the prod stack (P0):** `docs/VPS_DEPLOYMENT_GUIDE.md` describes a 3-container stack including `opsvale-caddy`, but `docker-compose.prod.yml` contains **only** `app` + `postgres`. The `Caddyfile` exists but is not referenced by any compose file → no TLS termination in the shipped stack.
-- **GDPR analytics consent is client-side only (P1):** the `/api/analytics/collect` endpoint ingests events with **no server-side consent check**; a persistent anonymous ID is stored. Retention pruning (`pruneExpiredAnalyticsData`) exists but is **never invoked by any cron/route**.
-- **Weak CSP (P1):** production CSP correctly drops `unsafe-eval` but **retains `script-src 'unsafe-inline'`**, so the CSP does not meaningfully defend against injected inline scripts.
-- **Rate limiting is in-memory and duplicated (P1):** two competing implementations (`lib/ratelimit` vs `lib/security`) with inconsistent proxy-trust behavior; both reset on restart and don't work across multiple instances.
-- **Legal claims risk (P1):** `lib/legal/config.ts` hard-codes a specific KvK number, VAT ID, address and phone as "official verified corporate entity details," and defaults food-grade / EU-storage evidence flags to **true**.
-- **SEO gap (P2):** `robots.ts` advertises `/sitemap.xml`, but **no `sitemap.ts` exists** (404), and its allow-list uses non-localized paths that only exist as redirect stubs.
+> The bullets below are the **original** findings; see §0 for remediation. Inline **✅ RESOLVED** tags added 2026-08-29.
 
-**Verdict:** 🟡 **Functional and impressively complete, but requires hardening before production** — primarily around deployment safety, TLS/proxy wiring, consent/GDPR enforcement, and CSP.
+- **Deployment integrity risk (P0):** `deploy.sh` applies schema with `prisma db push --accept-data-loss` even though real migrations exist and `DEPLOYMENT.md` says to use `prisma migrate deploy`. This can silently drop production data. — **✅ RESOLVED** (`prisma migrate deploy` + auto-baseline).
+- **Reverse proxy not in the prod stack (P0):** `docs/VPS_DEPLOYMENT_GUIDE.md` describes a 3-container stack including `opsvale-caddy`, but `docker-compose.prod.yml` contains **only** `app` + `postgres`. The `Caddyfile` exists but is not referenced by any compose file → no TLS termination in the shipped stack. — **✅ RESOLVED** (Caddy wired as opt-in `proxy` profile).
+- **GDPR analytics consent is client-side only (P1):** the `/api/analytics/collect` endpoint ingests events with **no server-side consent check**; a persistent anonymous ID is stored. Retention pruning (`pruneExpiredAnalyticsData`) exists but is **never invoked by any cron/route**. — **✅ RESOLVED** (server-side `hasServerConsent` gate; `/api/cron/prune-analytics`).
+- **Weak CSP (P1):** production CSP correctly drops `unsafe-eval` but **retains `script-src 'unsafe-inline'`**, so the CSP does not meaningfully defend against injected inline scripts. — **✅ RESOLVED** (nonce + `strict-dynamic` on dynamic routes; SSG pages keep `unsafe-inline` by Next constraint — see §0/§19).
+- **Rate limiting is in-memory and duplicated (P1):** two competing implementations (`lib/ratelimit` vs `lib/security`) with inconsistent proxy-trust behavior; both reset on restart and don't work across multiple instances. — **✅ RESOLVED for duplication/spoofing** (single TRUST_PROXY-aware limiter). *In-memory/single-instance store (Redis) remains a future item — acceptable at current single-instance scale.*
+- **Legal claims risk (P1):** `lib/legal/config.ts` hard-codes a specific KvK number, VAT ID, address and phone as "official verified corporate entity details," and defaults food-grade / EU-storage evidence flags to **true**. — **✅ RESOLVED** (all evidence flags opt-in; boot-time validation). *Note: the hard-coded entity **defaults** still exist as placeholders — override them via env with verified details before launch.*
+- **SEO gap (P2):** `robots.ts` advertises `/sitemap.xml`, but **no `sitemap.ts` exists** (404), and its allow-list uses non-localized paths that only exist as redirect stubs. — **✅ RESOLVED for sitemap** (`app/sitemap.ts` added). *Robots allow-list still lists non-localized stub paths (harmless; `allow: '/'` covers all).*
+
+**Verdict (original):** 🟡 **Functional and impressively complete, but requires hardening before production** — primarily around deployment safety, TLS/proxy wiring, consent/GDPR enforcement, and CSP.
+
+**Verdict (post-remediation, 2026-08-29):** 🟢 The P0 deployment-safety and the P1 GDPR/CSP/rate-limit/legal findings are resolved (§0). Remaining before launch: override the placeholder legal entity details with verified values, choose/verify the TLS path (external host proxy vs the opt-in Caddy profile), and set `CRON_SECRET`. Lower-priority open items: shared rate-limit store (Redis), session `active` re-check, true E2E, doc cleanups.
 
 ---
 
@@ -92,15 +121,15 @@ OpsVale is a **Next.js 15 / React 19 / Prisma 6 / PostgreSQL** monorepo that imp
 | F-026 | Notification dispatcher | In-app + web-push + email, prefs, incident dedup | `lib/notifications/dispatcher.ts` | 🟢 Exceeds |
 | F-027 | Web push (VAPID) | Subscriptions, service worker, vapid-key API | `lib/notifications/webPush.ts`, `public/sw.js` | 🟢 |
 | F-028 | Email dispatch | Resend API / SMTP / console fallback | `lib/email/transporter.ts`, `outbox.ts` | 🟢 |
-| F-029 | Visitor analytics ingestion | Bot filter, geo, sessions (30-min), events | `lib/analytics/ingestion.ts` | 🟠 (consent server-side gap) |
+| F-029 | Visitor analytics ingestion | Bot filter, geo, sessions (30-min), events | `lib/analytics/ingestion.ts` | 🟢 (server-side consent gate added — §0) |
 | F-030 | Analytics dashboard + export | Traffic/CTA/funnel + CSV/JSON | `app/admin/analytics/*`, `lib/analytics/queries.ts`, `export.ts` | 🟢 |
 | F-031 | Cookie consent | Banner, categories, versioning, withdrawal | `components/CookieConsentBanner.tsx`, `lib/consent/*` | 🟢 |
 | F-032 | Legal pages + config | Privacy/cookies/terms/imprint + evidence flags | `app/[locale]/{privacy,cookies,terms,imprint}`, `lib/legal/config.ts` | 🟠 (claims risk) |
 | F-033 | i18n (custom) | 5 locales, deep parity test, hreflang/canonical | `lib/i18n/*` | 🟢 |
-| F-034 | Security headers | CSP/HSTS/XFO/nosniff/referrer/permissions | `next.config.ts` | 🟠 (unsafe-inline) |
+| F-034 | Security headers | CSP/HSTS/XFO/nosniff/referrer/permissions | `next.config.ts`, `middleware.ts`, `lib/security/csp.ts` | 🟢 (nonce CSP on dynamic routes — §0/§19) |
 | F-035 | Health probe | DB + storage, incident emit | `app/api/health/route.ts` | 🟢 |
 | F-036 | Cron cleanup | Orphan upload GC, bearer-secured | `app/api/cron/cleanup-uploads/route.ts`, `lib/storage/cleanup.ts` | 🟢 |
-| F-037 | Analytics retention prune | GDPR TTL purge | `lib/analytics/retention.ts` | 🔴 Exists but **unwired** |
+| F-037 | Analytics retention prune | GDPR TTL purge | `lib/analytics/retention.ts`, `app/api/cron/prune-analytics` | 🟢 Wired to cron (§0) |
 | F-038 | Error boundaries | public/global/admin w/ digest IDs | `app/error.tsx`, `global-error.tsx`, `admin/error.tsx` | 🟢 |
 | F-039 | Pricing audit log | CREATE/VERSION_UPDATE/TOGGLE/RETIRE | `PricingAuditLog` + excel/manual actions | 🟢 |
 | F-040 | Admin audit log | Admin lifecycle events | `AdminAuditLog` + settings actions | 🟢 |
@@ -262,8 +291,8 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 **Implemented (evidence):** models `Visitor`, `VisitorSession`, `AnalyticsEvent` (+ rich indexes and enums). `lib/analytics/`: `ingestion.ts` (bot filter, 30-min session inactivity, visitor/session upsert, event create), `botDetector.ts`, `geoResolver.ts`, `sanitizer.ts`, `queries.ts`, `export.ts`, `tracker.ts`, `retention.ts`. Client: `components/analytics/VisitorAnalyticsProvider.tsx` gates on `getClientConsent().analytics`. API `app/api/analytics/collect/route.ts` (Zod, 60/min rate limit, 202 on filtered). Admin `app/admin/visitors/page.tsx` + `VisitorsIntelligenceView`. CSV/JSON export via `app/api/admin/analytics/export/route.ts`. **IP is never stored** (geo derived from CDN header only). Tests: `botDetector`, `consentGating`, `geoResolver`, `ingestion`, `queries`, `sanitizer`.
 
 **Gaps:**
-- 🟠 **Consent enforced client-side only.** `/api/analytics/collect` performs **no server-side consent verification** — any client (or a non-browser POST) can insert events with a persistent `anonymousId`. The `consentGating` test validates `isCategoryAllowed`, but that function is only called in the browser provider, not on the server. Under GDPR the persistent identifier requires consent that the server does not verify.
-- 🔴 **Retention pruning unwired.** `pruneExpiredAnalyticsData()` exists in `lib/analytics/retention.ts` but grep confirms **no import anywhere** (no cron route, no scheduler). The only cron route is `cleanup-uploads`. Data retention is therefore not operational.
+- 🟢 ~~**Consent enforced client-side only.**~~ — **✅ RESOLVED**: `/api/analytics/collect` now calls `hasServerConsent(req.headers.get('cookie'), 'analytics')` and returns 202 (filtered) without writing anything when consent is absent — enforced independently of the client.
+- 🟢 ~~**Retention pruning unwired.**~~ — **✅ RESOLVED**: `pruneExpiredAnalyticsData()` is now invoked by the new bearer-secured `/api/cron/prune-analytics` route.
 - 🟠 **Geo only works behind a CDN with `TRUST_PROXY=true`** (`cf-ipcountry`/`x-vercel-ip-country`/…). The shipped stack terminates at **Caddy**, which does **not** set those headers → all analytics `countryCode` will be null in the documented deployment. "Geo resolution / country data" is effectively non-functional on the target infra.
 - ⚫ **Anomaly detection** notification types (`ANALYTICS_TRAFFIC_ANOMALY`, `ANALYTICS_CONVERSION_DROP`, `ANALYTICS_TRAFFIC_OPPORTUNITY`) exist in the schema/`events.ts` but no scheduled job emits them.
 
@@ -284,14 +313,14 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 | Control | State | Evidence / Note |
 |---|---|---|
 | CSP `unsafe-eval` | 🟢 removed in prod | `next.config.ts` (`isProd` branch) |
-| CSP `unsafe-inline` (script) | 🟠 **retained in prod** | `script-src 'self' 'unsafe-inline'` — CSP does not block injected inline scripts |
+| CSP `unsafe-inline` (script) | 🟢 **removed on dynamic routes** | Per-request nonce + `strict-dynamic` on `/admin/**` + `/proposals/**` (`middleware.ts` / `lib/security/csp.ts`). SSG public pages keep `unsafe-inline` (Next cannot nonce prebuilt inline scripts) but drop `unsafe-eval`. `object-src 'none'` added. See §0. |
 | HSTS | 🟢 prod-only | `max-age=31536000; includeSubDomains` (no `preload`) |
 | X-Frame-Options / frame-ancestors | 🟢 | `DENY` + `frame-ancestors 'none'` |
 | MIME sniffing | 🟢 | `X-Content-Type-Options: nosniff` global + on file responses |
 | Referrer / Permissions Policy | 🟢 | `strict-origin-when-cross-origin`; camera/mic/geo/payment disabled |
 | X-Robots-Tag (non-prod) | 🟢 | `noindex,nofollow` when `APP_ENV!==production` |
-| Rate limiting | 🟠 | **Two in-memory implementations** (`lib/ratelimit` used by calculator/upload/analytics; `lib/security` used by quote submit). In-memory → resets on restart, not multi-instance. Inconsistent proxy trust (below). |
-| IP spoofing | 🟠 | `lib/ratelimit.getClientIp` trusts `x-forwarded-for` **unconditionally**; `lib/security.getClientIp` respects `TRUST_PROXY`. The public API limiter is spoofable. |
+| Rate limiting | 🟢 (single impl) | Consolidated to one `lib/ratelimit` (`lib/security` removed); quote submit migrated over. Still in-memory (resets on restart, not multi-instance) — a shared Redis store remains a future item, acceptable at single-instance scale. See §0. |
+| IP spoofing | 🟢 | `lib/ratelimit.getClientIp` is now **TRUST_PROXY-aware** — forwarded headers are ignored unless `TRUST_PROXY=true`, so the public limiter is no longer spoofable. |
 | Input validation | 🟢 | Zod on every mutation (calculator, quote, quotes, settings, excel, proposal actions, analytics) |
 | File upload | 🟢 | magic-byte + ext match + size cap |
 | AuthZ on mutations | 🟢 | `requireAdmin`/`requireSuperAdmin` on all admin actions; admin file/pdf routes check session |
@@ -300,9 +329,9 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 | CSRF | 🟡 | No explicit tokens; relies on same-origin `form-action 'self'` + SameSite cookies + POST server actions. Acceptable for Next server actions; proposal actions are intentionally token-bearer (unauthenticated by design). |
 | Secrets / error leaks | 🟢 | Secrets in `.env` (git-ignored); error boundaries expose only `digest` correlation IDs, not stack traces |
 | Env validation | 🟡 | Storage config fails fast; `validateProductionLegalCompliance` exists but is **not enforced at boot** |
-| CRON auth | 🟢 | Bearer `CRON_SECRET` compare (but **no-secret = open**, see below) |
+| CRON auth | 🟢 | Bearer `CRON_SECRET` compare via `lib/cron/auth.ts`, now **fails closed** — 401 in production when the secret is unset. |
 
-**Additional:** `cleanup-uploads` cron only enforces the bearer **if `CRON_SECRET` is set**; if unset, the endpoint is unauthenticated. Prefer failing closed.
+**Additional:** ~~`cleanup-uploads` cron only enforces the bearer **if `CRON_SECRET` is set**; if unset, the endpoint is unauthenticated.~~ — **✅ RESOLVED**: both cron routes now use `lib/cron/auth.ts`, which **fails closed** (401 in production when `CRON_SECRET` is unset).
 
 ---
 
@@ -313,8 +342,8 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 **Implemented:** `CookieConsentBanner` + `lib/consent/{consentManager,types}.ts`: categories (necessary/analytics/marketing/preferences), **consent versioning** (outdated version → re-prompt), 1-year `SameSite=Lax` cookie, withdrawal via re-selection with a `opsvale_consent_updated` event. Legal pages exist (`privacy`, `cookies`, `terms`, `imprint`) per locale. Proposal acceptance records the **Terms/Privacy version** accepted (legal evidence).
 
 **Risks:**
-- 🟠 **Analytics consent not enforced server-side** (see §17).
-- 🟠 **Unbacked corporate/certification claims.** `lib/legal/config.ts` hard-codes `OpsVale B.V.`, `KvK 88392019`, `NL883920190B01`, a Rotterdam address and phone as "official verified corporate entity details," and defaults `foodGradeEu1935_2004` and `euStorageOnly` evidence flags to **true** (`!== 'false'`). If these entity/registration/certification details are not genuinely verified, this is a legal/compliance liability. `validateProductionLegalCompliance` can flag missing env overrides but is not called during boot.
+- 🟢 ~~**Analytics consent not enforced server-side**~~ — **✅ RESOLVED** (see §17/§0).
+- 🟢 **Unbacked corporate/certification claims** — **✅ RESOLVED (mechanism)**: evidence flags no longer default to `true`; every flag is opt-in (`=== 'true'`), and `validateProductionLegalCompliance(process.env)` now runs at boot via `instrumentation.ts` (warns on missing statutory fields in production). ⚠️ **Action still required:** the hard-coded `OpsVale B.V.` / `KvK 88392019` / `NL883920190B01` / Rotterdam address remain as **placeholder defaults** — override them via the `COMPANY_*` env vars with genuinely verified details before launch.
 
 ---
 
@@ -325,8 +354,8 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 **Evidence:** `app/robots.ts` — non-prod `disallow:'/'`; prod allows public paths and disallows `/admin/`, `/proposals/`, `/api/`; declares `sitemap: ${APP_URL}/sitemap.xml`. Localized `canonical` + `hreflang` in `app/[locale]/layout.tsx`. Per-locale metadata/OpenGraph via `generateMetadata`.
 
 **Gaps:**
-- 🔴 **No `sitemap.ts`** — the advertised `/sitemap.xml` returns 404.
-- 🟠 The robots **allow-list uses non-localized paths** (`/calculator`, `/products`, `/how-it-works`, `/about`, `/quote`) which now only exist as 307 redirect stubs; canonical content lives under `/[locale]/…`.
+- 🟢 ~~**No `sitemap.ts`**~~ — **✅ RESOLVED**: `app/sitemap.ts` emits all locale × public-path URLs (excludes admin/api/proposals); `/sitemap.xml` now renders (verified in the build route table).
+- 🟠 The robots **allow-list uses non-localized paths** (`/calculator`, `/products`, `/how-it-works`, `/about`, `/quote`) which now only exist as 307 redirect stubs; canonical content lives under `/[locale]/…`. *(Still open — harmless, since `allow: '/'` already permits all public content.)*
 
 ---
 
@@ -352,10 +381,10 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 
 **Evidence & findings:**
 - `Dockerfile`: multi-stage, `node:20-alpine`, non-root `nextjs:nodejs`, standalone server, dedicated `uploads` dir. Good. (⚫ `DEPLOYMENT.md` prescribes `node:22` — mismatch.)
-- `docker-compose.prod.yml`: **only `app` + `postgres`** (app bound to `127.0.0.1:3010`, uploads volume, healthchecked DB). **No Caddy/reverse-proxy service** despite `docs/VPS_DEPLOYMENT_GUIDE.md` describing an `opsvale-caddy` TLS container. The `Caddyfile` (which proxies `app:3000`) is **not referenced by any compose file** → as shipped, there is **no TLS termination and no reverse proxy** in the stack.
-- 🔴 **`deploy.sh` runs `prisma db push --accept-data-loss`** to sync schema — bypassing the five real migrations in `prisma/migrations/` and contradicting `DEPLOYMENT.md`'s `prisma migrate deploy`. On an existing prod DB this can **drop columns/data** and diverges migration history.
+- `docker-compose.prod.yml`: **only `app` + `postgres`** (app bound to `127.0.0.1:3010`, uploads volume, healthchecked DB). **No Caddy/reverse-proxy service** despite `docs/VPS_DEPLOYMENT_GUIDE.md` describing an `opsvale-caddy` TLS container. — **✅ RESOLVED**: a `caddy` service (automatic HTTPS via the `Caddyfile`) is now defined under an **opt-in `proxy` profile** (`docker compose --profile proxy up`), so it delivers TLS without clashing with an existing host proxy.
+- ~~🔴 **`deploy.sh` runs `prisma db push --accept-data-loss`**~~ — **✅ RESOLVED** *(pre-audit, `b5d6af9`)*: `deploy.sh` now runs `prisma migrate deploy` with a one-time auto-baseline; the schema history was consolidated into a single `0_init` migration (so analytics/notification models are now covered).
 - Health probe + retry loop in `deploy.sh`; image prune. Reasonable ops ergonomics.
-- **No automated Postgres backup** script/job (plan §7 called for documenting volume backups).
+- ~~**No automated Postgres backup**~~ — **✅ RESOLVED** *(pre-audit, `b5d6af9`)*: `deploy.sh` runs `pg_dump` (gzip, retains the last 10) before applying migrations.
 - `TRUST_PROXY` defaults `false`; behind a proxy this must be set true (also affects geo + rate-limit IP).
 
 ---
@@ -366,7 +395,7 @@ Emitted from real business paths: quote submission, proposal accept/decline/modi
 
 **Evidence:** `prisma/schema.prisma` — 24+ models/enums. Highlights beyond plan: `PublicPriceRange` + temporal versioning (`effectiveFrom/To`, `active`), `PricingAuditLog`, `AdminAuditLog`, `Company` normalization fields + dedup indexes, `LeadSequence`, `TemporaryUpload` (single-use tokens), `Quote` lifecycle (`accessToken`, `snapshot`, `dispatchReqAt/sentAt/expiresAt/acceptedAt/rejectedAt`), `OutboxEmail` (transactional outbox), `Notification*` suite, `SystemIncident`, and the full Phase-9 analytics trio. Sensible unique constraints (`@@unique([leadId,revision])`, `sizeLabel_material_print`, `accessToken`, `idempotencyKey`, `endpoint`) and indexes throughout. Cascade deletes on notification/analytics children. Money as `Decimal(10,4)`; markup as `Decimal(4,3)`.
 
-Five migrations present (`init`, `add_indexes`, `add_pricing_versioning_and_audit`, `add_outbox_quote_snapshot_and_lifecycle`, `add_admin_audit_log`) — but note the deploy script bypasses them (§24). ⚠️ The **analytics/notification models appear to have no corresponding migration** in the listed set (schema was extended, likely applied via `db push`), which is exactly why `deploy.sh` uses `db push`. This is a migration-history integrity problem.
+~~Five migrations present … the deploy script bypasses them … analytics/notification models appear to have no corresponding migration … migration-history integrity problem.~~ — **✅ RESOLVED** *(pre-audit, `b5d6af9`)*: migration history was consolidated into a single reviewable `0_init` migration that includes the analytics/notification models, and `deploy.sh` applies it with `prisma migrate deploy` (+ one-time auto-baseline for the original db-push database).
 
 ---
 
@@ -401,8 +430,8 @@ Five migrations present (`init`, `add_indexes`, `add_pricing_versioning_and_audi
 | README: "Phases 0–2 complete… remaining: …" | All phases + Phase 8 (notifications) + Phase 9 (analytics) implemented | ⚫ Outdated (understates) |
 | Master plan: "24 tests… passing" | 156 tests passing | ⚫ Outdated |
 | DEPLOYMENT.md: `node:22-alpine` | `Dockerfile` uses `node:20-alpine` | ⚫ Mismatch |
-| DEPLOYMENT.md: "`npx prisma migrate deploy`" | `deploy.sh` uses `prisma db push --accept-data-loss` | 🔴 Contradiction (unsafe) |
-| VPS guide: "3 containers incl. `opsvale-caddy` TLS proxy" | `docker-compose.prod.yml` has only app+postgres; Caddyfile unused | 🔴 Unsupported |
+| DEPLOYMENT.md: "`npx prisma migrate deploy`" | `deploy.sh` now uses `prisma migrate deploy` (+ auto-baseline) | 🟢 ✅ Now consistent |
+| VPS guide: "3 containers incl. `opsvale-caddy` TLS proxy" | Caddy now defined in `docker-compose.prod.yml` under opt-in `proxy` profile | 🟢 ✅ Now supported (VPS guide still to reconcile) |
 | DEPLOYMENT.md: robots disallows /admin,/proposals,/api | True in prod (`app/robots.ts`) | 🟢 Verified |
 | DEPLOYMENT.md: "S3/R2/MinIO supported" | `S3StorageAdapter` present + fail-fast config | 🟢 Verified |
 | DEPLOYMENT.md: Infra Diagnostics / DB latency in /admin/settings | `SettingsView` + `/api/health` exist | 🟢 Plausible (not runtime-verified) |
@@ -450,15 +479,15 @@ Five migrations present (`init`, `add_indexes`, `add_pricing_versioning_and_audi
 | PDF | Localized, accurate | pdfkit vector | `generateProposalPdf.ts` | 🟢 | Meets (locale caveat) |
 | Notifications | Admin email on quote | Full multi-channel center | `notifications/*` | 🟢 | Exceeds |
 | Analytics | Dashboard from DB | Present + Phase-9 visitor intel | `admin/analytics`, `analytics/*` | 🟢/🟠 | Exceeds build / partial GDPR |
-| Consent-gated analytics | Block before consent | Client-side only | `api/analytics/collect` | 🟠 | Worse than intended |
-| Data retention | Purge old data | Function exists, **unwired** | `retention.ts` | 🔴 | Missing (operationally) |
-| Production CSP | No `unsafe-eval` | eval gone, **inline kept** | `next.config.ts` | 🟡 | Partial |
-| Rate limiting | Public POST limits | In-memory, dup, spoofable | `ratelimit/`, `security/` | 🟠 | With risks |
-| SEO robots/sitemap | robots + sitemap | robots ✔, **no sitemap** | `robots.ts` | 🟡 | Partial |
+| Consent-gated analytics | Block before consent | Server-side gate added | `api/analytics/collect`, `hasServerConsent` | 🟢 | ✅ Resolved |
+| Data retention | Purge old data | Wired to cron | `retention.ts`, `cron/prune-analytics` | 🟢 | ✅ Resolved |
+| Production CSP | No `unsafe-eval` | eval gone; **inline removed on dynamic routes** (nonce) | `middleware.ts`, `lib/security/csp.ts` | 🟢 | ✅ Resolved (hybrid) |
+| Rate limiting | Public POST limits | Single TRUST_PROXY-aware limiter | `ratelimit/` | 🟢 | ✅ Resolved (Redis store deferred) |
+| SEO robots/sitemap | robots + sitemap | robots ✔, **sitemap added** | `robots.ts`, `sitemap.ts` | 🟢 | ✅ Resolved |
 | Auth + RBAC + safeguards | Guard + protections | Implemented + audit | `requireAdmin`, `settings/actions.ts` | 🟢 | Better |
-| Docker deploy + TLS | web+db+proxy on VPS | app+db only, **no proxy in stack** | `docker-compose.prod.yml` | 🟠 | Worse than documented |
-| Safe migrations | `migrate deploy` | `db push --accept-data-loss` | `deploy.sh` | 🔴 | Risk |
-| DB backups | Documented/automated | None | — | 🔴 | Missing |
+| Docker deploy + TLS | web+db+proxy on VPS | app+db + opt-in Caddy `proxy` profile | `docker-compose.prod.yml`, `Caddyfile` | 🟢 | ✅ Resolved |
+| Safe migrations | `migrate deploy` | `prisma migrate deploy` + auto-baseline | `deploy.sh` | 🟢 | ✅ Resolved |
+| DB backups | Documented/automated | Deploy-time `pg_dump` + retention | `deploy.sh` | 🟢 | ✅ Resolved |
 
 ---
 
@@ -468,7 +497,7 @@ Five migrations present (`init`, `add_indexes`, `add_pricing_versioning_and_audi
 
 **Aligned:** public site, CRM, logistics, calculator, PDF, storage adapters, legal pages.
 
-**Worse / riskier than intended:** deployment safety (`db push --accept-data-loss`; no proxy/TLS in the shipped stack; no backups); GDPR analytics (client-only consent, unwired retention, geo dead behind Caddy); CSP (`unsafe-inline`); rate limiting (in-memory, duplicated, spoofable); SEO (missing sitemap); legal claims (hard-coded/defaulted certifications).
+**Worse / riskier than intended (original — mostly resolved 2026-08-29, see §0):** deployment safety (`db push --accept-data-loss`; no proxy/TLS; no backups) → ✅ migrate deploy + backups + opt-in Caddy; GDPR analytics (client-only consent, unwired retention) → ✅ server gate + retention cron; CSP (`unsafe-inline`) → ✅ nonce on dynamic routes; rate limiting (duplicated, spoofable) → ✅ single TRUST_PROXY-aware limiter; SEO (missing sitemap) → ✅ added; legal claims (defaulted certifications) → ✅ opt-in + boot check (verify entity values). *Still weaker than ideal:* geo behind Caddy needs `TRUST_PROXY=true` + real client-IP headers; rate-limit store still in-memory.
 
 **Over-engineered relative to a single-admin launch:** the full notification preference matrix, web-push, incident dedup, and anomaly enums add maintenance surface some of which (anomaly emission, retention) is not actually wired — complexity without full payoff.
 
@@ -476,14 +505,14 @@ Five migrations present (`init`, `add_indexes`, `add_pricing_versioning_and_audi
 
 ## 32. Missing Features
 
-- 🔴 **`sitemap.xml`** (referenced, not implemented).
-- 🔴 **Wired analytics retention/purge** job (GDPR).
-- 🔴 **Automated DB backup** procedure.
-- 🔴 **Reverse proxy / TLS** service in `docker-compose.prod.yml` (Caddyfile exists but unused).
-- 🟠 **Server-side consent enforcement** for analytics.
-- 🟠 **Persistent/shared rate-limit store** (Redis) — planned, never built.
-- ⚫ **Anomaly-detection scheduler** to emit the analytics alert types.
-- ⚫ **True E2E test suite** (Playwright configured but effectively empty).
+- ✅ ~~**`sitemap.xml`**~~ — implemented (`app/sitemap.ts`).
+- ✅ ~~**Wired analytics retention/purge** job~~ — `/api/cron/prune-analytics`.
+- ✅ ~~**Automated DB backup** procedure~~ — `deploy.sh` `pg_dump` + retention.
+- ✅ ~~**Reverse proxy / TLS** service~~ — Caddy `proxy` profile in `docker-compose.prod.yml`.
+- ✅ ~~**Server-side consent enforcement** for analytics~~ — `hasServerConsent` gate.
+- 🟠 **Persistent/shared rate-limit store** (Redis) — planned, never built. *(Still open — acceptable at single-instance scale.)*
+- ⚫ **Anomaly-detection scheduler** to emit the analytics alert types. *(Still open.)*
+- ⚫ **True E2E test suite** (Playwright configured but effectively empty). *(Still open — Playwright was used ad-hoc to verify CSP this pass, but no committed E2E specs.)*
 
 ---
 
@@ -500,39 +529,39 @@ Five migrations present (`init`, `add_indexes`, `add_pricing_versioning_and_audi
 
 ## 34. Critical Risks & Security Findings
 
-1. **P0 — `prisma db push --accept-data-loss` in `deploy.sh`** on a production DB can silently drop data and diverge migration history. Also explains why later schema (analytics/notifications) has no migration file.
-2. **P0 — No reverse proxy / TLS in `docker-compose.prod.yml`.** The app binds `127.0.0.1:3010` with no Caddy in the stack → the documented HTTPS/HSTS posture is not actually delivered by the shipped compose.
-3. **P1 — GDPR:** analytics consent enforced only client-side; persistent `anonymousId` stored; retention purge unwired.
-4. **P1 — CSP retains `script-src 'unsafe-inline'`** in production.
-5. **P1 — Rate limiting** is in-memory, duplicated, and the public-API limiter trusts `x-forwarded-for` unconditionally (spoofable; also non-functional across instances/restarts).
-6. **P1 — Legal claims:** hard-coded corporate registration/VAT + certification flags defaulting to `true` without a verification source.
-7. **P2 — Missing `sitemap.xml`** referenced by robots; robots allow-list points at redirect stubs.
-8. **P2 — Middleware** doesn't re-check `active`/role (stale JWT can view admin page shells until a server action re-validates).
-9. **P2 — Cron cleanup** is unauthenticated if `CRON_SECRET` is unset (fails open).
-10. **P3 — Node version doc mismatch (20 vs 22); no automated DB backup.**
+1. **P0 — `prisma db push --accept-data-loss` in `deploy.sh`** — **✅ RESOLVED**: `prisma migrate deploy` + consolidated `0_init` + auto-baseline.
+2. **P0 — No reverse proxy / TLS in `docker-compose.prod.yml`** — **✅ RESOLVED**: opt-in Caddy `proxy` profile (automatic HTTPS).
+3. **P1 — GDPR:** consent client-side only, retention unwired — **✅ RESOLVED**: server-side consent gate + `/api/cron/prune-analytics`.
+4. **P1 — CSP retains `script-src 'unsafe-inline'`** — **✅ RESOLVED (hybrid)**: nonce + `strict-dynamic` on dynamic routes; SSG pages keep `unsafe-inline` by Next constraint.
+5. **P1 — Rate limiting** in-memory, duplicated, spoofable — **✅ RESOLVED for duplication + spoofing** (single TRUST_PROXY-aware limiter). Shared store (Redis) still open.
+6. **P1 — Legal claims** default `true` without verification — **✅ RESOLVED (mechanism)**: flags opt-in + boot validation. ⚠️ Placeholder entity details must still be overridden with verified values.
+7. **P2 — Missing `sitemap.xml`** — **✅ RESOLVED** (`app/sitemap.ts`). Robots stub-path allow-list still open (harmless).
+8. **P2 — Middleware** doesn't re-check `active`/role — ⚪ **OPEN** (stale JWT can view admin page shells until a server action re-validates via `requireAdmin`).
+9. **P2 — Cron cleanup** unauthenticated if `CRON_SECRET` unset — **✅ RESOLVED**: fails closed in production (`lib/cron/auth.ts`).
+10. **P3 — Node version doc mismatch (20 vs 22)** ⚪ open; **no automated DB backup** — **✅ RESOLVED** (deploy-time `pg_dump`).
 
 ---
 
 ## 35. Recommended Priority Roadmap
 
 **P0 — before production**
-1. Replace `db push --accept-data-loss` with `prisma migrate deploy`; generate migrations for the analytics/notification schema so history is consistent.
-2. Add the reverse-proxy/TLS service (wire `Caddyfile` into `docker-compose.prod.yml`) or document the real external proxy; verify HSTS/HTTPS end-to-end.
-3. Add an automated Postgres backup (volume dump + retention) and restore runbook.
+1. ✅ ~~Replace `db push` with `prisma migrate deploy`; generate migrations for analytics/notification schema.~~ — **DONE** (`0_init` consolidation + auto-baseline).
+2. ✅ ~~Add the reverse-proxy/TLS service~~ — **DONE** (opt-in Caddy `proxy` profile). *Verify HSTS/HTTPS end-to-end on the chosen path at launch.*
+3. ✅ ~~Add an automated Postgres backup~~ — **DONE** (deploy-time `pg_dump` + retention). *A restore runbook is still worth documenting.*
 
 **P1 — high**
-4. Enforce analytics consent **server-side** in `/api/analytics/collect`; **wire `pruneExpiredAnalyticsData`** to a scheduled cron.
-5. Harden CSP: drop `unsafe-inline` (nonce/hash-based scripts).
-6. Consolidate to one rate limiter that is TRUST_PROXY-aware and backed by a shared store (Redis); fail-closed on missing `CRON_SECRET`.
-7. Verify/parameterize legal entity + certification claims; call `validateProductionLegalCompliance` at boot in production.
+4. ✅ ~~Enforce analytics consent server-side; wire `pruneExpiredAnalyticsData`~~ — **DONE**.
+5. ✅ ~~Harden CSP: drop `unsafe-inline`~~ — **DONE (hybrid)**: nonce/strict-dynamic on dynamic routes; SSG pages retain `unsafe-inline` (Next limitation).
+6. ✅ ~~Consolidate rate limiter, TRUST_PROXY-aware; fail-closed cron~~ — **DONE**. Shared store (Redis) still deferred.
+7. ✅ ~~Call `validateProductionLegalCompliance` at boot~~ — **DONE**. ⚠️ Still **verify/override** the placeholder legal entity + certification values via env.
 
 **P2 — important**
-8. Add `app/sitemap.ts`; fix robots allow-list to localized paths.
-9. Re-validate `active`/role in the session/JWT callback (or shorten session TTL).
-10. Update README/DEPLOYMENT/VPS docs to reality (i18n = custom, phase status, node version, migration command, 156 tests, actual container set).
+8. ✅ ~~Add `app/sitemap.ts`~~ — **DONE**. Robots allow-list → localized paths still open (harmless).
+9. ⚪ **OPEN** — Re-validate `active`/role in the session/JWT callback (or shorten session TTL).
+10. ⚪ **PARTIAL** — `DEPLOYMENT.md` updated (migration command, TLS options, new cron). README/VPS-guide reconciliation (i18n = custom, phase status, node version, test count, container set) still pending.
 
 **P3 — nice to have**
-11. Add real Playwright E2E for the acquisition→dispatch→accept path; wire anomaly-detection emission; remove redundant non-localized route stubs; localize PDF number/date formatting.
+11. ⚪ **OPEN** — Real Playwright E2E for acquisition→dispatch→accept; wire anomaly-detection emission; remove redundant non-localized route stubs; localize PDF number/date formatting.
 
 ---
 
@@ -541,29 +570,31 @@ Five migrations present (`init`, `add_indexes`, `add_pricing_versioning_and_audi
 | Category | Score/10 | Assessment |
 |---|---|---|
 | Architecture | 9 | Clean route/domain split, server-only pricing, edge-safe auth |
-| Security | 6 | Good AuthN/AuthZ/validation; weak CSP, spoofable/in-memory rate limit, open-if-unset cron |
+| Security | 8 *(was 6)* | Good AuthN/AuthZ/validation; **nonce CSP on dynamic routes, unified TRUST_PROXY-aware rate limiter, fail-closed cron** (§0). In-memory rate-limit store remains. |
 | Authentication | 9 | JWT + bcrypt-12 + timing-safe + governance protections |
 | Authorization | 8 | `requireAdmin`/RBAC on all mutations; middleware doesn't re-check active |
 | Data Integrity | 8 | Transactions, versioning, audit, idempotency — but deploy uses `db push --accept-data-loss` |
-| Privacy / GDPR | 4 | Consent client-only, retention unwired, hard-coded legal claims |
+| Privacy / GDPR | 7 *(was 4)* | **Server-side consent gate + wired retention purge** (§0); evidence flags opt-in + boot validation. Placeholder legal entity details must still be overridden with verified values. |
 | Error Handling | 9 | Digest-based boundaries, no leakage, recovery actions |
 | Testing | 7 | 156 real unit tests; light E2E/DB-integration; one mock-only governance test |
 | Performance | 7 | SSR/SSG, indexed queries, standalone; 25 MB uploads buffered through app |
 | Scalability | 5 | In-memory rate limit + local disk storage default limit horizontal scale |
 | Observability | 6 | Health probe + incidents + audit logs; no external logging/metrics wired |
-| Deployment | 4 | No proxy/TLS in stack, unsafe schema sync, no backups, doc mismatches |
+| Deployment | 7 *(was 4)* | **`prisma migrate deploy` + auto-baseline, deploy-time `pg_dump` backups, opt-in Caddy TLS profile** (§0). Restore runbook + some doc reconciliation still pending. |
 | Documentation | 5 | Thorough but materially outdated/contradictory in places |
 | Maintainability | 8 | Clean code, no debt markers, typed; some duplication (rate limiters, route stubs) |
 
-**Overall Production Readiness Score: 66 / 100.**
+**Overall Production Readiness Score: 66 / 100 (original) → ~82 / 100 (post-remediation, 2026-08-29).**
 
-The *application* is ~8/10; the score is pulled down by *operational/deployment* and *GDPR/compliance* readiness, which are precisely the areas that separate "builds and passes tests" from "safe to run in production."
+The original score was pulled down by *operational/deployment* and *GDPR/compliance* readiness. The remediation pass (§0) lifts Security, Privacy/GDPR, and Deployment materially. Remaining drags: placeholder legal entity values, in-memory rate-limit store (single-instance), no committed E2E, and minor doc reconciliation — none of which block a controlled single-instance launch once the legal values and `CRON_SECRET`/TLS path are set.
 
 ---
 
 ## 37. Final Verdict
 
-**Current state:** 🟡 **Functional but requires hardening.** This is a genuinely capable, well-architected B2B platform whose *core commercial logic is production-grade*, but whose *deployment, privacy, and edge-security posture* are not yet safe to ship.
+**Current state (original):** 🟡 **Functional but requires hardening.** This is a genuinely capable, well-architected B2B platform whose *core commercial logic is production-grade*, but whose *deployment, privacy, and edge-security posture* are not yet safe to ship.
+
+**Current state (post-remediation, 2026-08-29):** 🟢 **Substantially hardened.** The deployment-safety P0s and the GDPR/CSP/rate-limit/legal-mechanism/cron P1–P2s are addressed on branch `harden/audit-p1-items` (PR #4). Before a controlled launch, the operator still must: (1) override the placeholder legal entity/certification values via `COMPANY_*` / `EVIDENCE_*` env vars, (2) set `CRON_SECRET` and schedule the two cron endpoints, and (3) confirm the TLS path (external host proxy or the opt-in Caddy `proxy` profile). See §0 for the full remediation log.
 
 **Does the current implementation meet the original desired OpsVale project?**
 **PARTIALLY — trending YES on scope, NO on operational safety.** Every functional requirement in the master plan is implemented, and several are exceeded; but the delivery/compliance requirements (safe migrations, TLS/proxy, GDPR retention/consent, backups) are unmet or only partially met.
@@ -575,16 +606,16 @@ The *application* is ~8/10; the score is pulled down by *operational/deployment*
 - **Missing:** sitemap, wired retention, DB backups, proxy service, server-side consent, shared rate-limit store, real E2E.
 - **Risks:** silent prod data loss on deploy; unverified legal/certification claims; unauthenticated cron when secret unset; stale-JWT admin page access.
 
-**Top 10 actions required (ranked):**
-1. **P0** — Switch deploy to `prisma migrate deploy`; backfill migrations for analytics/notifications schema.
-2. **P0** — Add reverse proxy + TLS to the prod compose (or document/verify the external one).
-3. **P0** — Automate Postgres backups + restore runbook.
-4. **P1** — Enforce analytics consent server-side; schedule retention purge.
-5. **P1** — Remove `unsafe-inline` from production CSP (nonce/hash).
-6. **P1** — Unify rate limiting; make it TRUST_PROXY-aware and shared-store backed; fail-closed cron.
-7. **P1** — Verify/parameterize legal entity + certification claims; enforce at boot.
-8. **P2** — Add `sitemap.ts`; correct robots allow-list; re-validate `active` in session.
-9. **P2** — Reconcile all documentation (i18n, phases, node, migration command, container set, test count).
-10. **P3** — Real Playwright E2E; wire anomaly emission; prune redundant route stubs; localize PDF formatting.
+**Top 10 actions required (ranked) — status 2026-08-29:**
+1. **P0** — ✅ Switch deploy to `prisma migrate deploy`; backfill migrations. **DONE**.
+2. **P0** — ✅ Add reverse proxy + TLS (opt-in Caddy `proxy` profile). **DONE** — verify end-to-end at launch.
+3. **P0** — ✅ Automate Postgres backups. **DONE** — restore runbook still to document.
+4. **P1** — ✅ Enforce analytics consent server-side; schedule retention purge. **DONE**.
+5. **P1** — ✅ Remove `unsafe-inline` from CSP (nonce). **DONE (hybrid — dynamic routes)**.
+6. **P1** — ✅ Unify rate limiting, TRUST_PROXY-aware; fail-closed cron. **DONE** (shared Redis store deferred).
+7. **P1** — ✅ Enforce legal validation at boot. **DONE** — ⚠️ still override placeholder entity/cert values via env.
+8. **P2** — ✅ `sitemap.ts` **DONE**; ⚪ correct robots allow-list + re-validate `active` in session still open.
+9. **P2** — ⚪ **PARTIAL** — `DEPLOYMENT.md` reconciled; README/VPS-guide (i18n, phases, node, test count) pending.
+10. **P3** — ⚪ **OPEN** — Real Playwright E2E; anomaly emission; prune route stubs; localize PDF formatting.
 
 *End of audit. No project code was modified; this document is the sole deliverable.*
