@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { calculatorInputSchema } from '@/lib/validation/calculator';
 import { resolvePublicRange } from '@/lib/pricing/publicRange';
+import { selectActiveCorridor } from '@/lib/pricing/logistics';
 import { computeSavings } from '@/lib/calculator/savings';
 import { buildCalculatorResponse } from '@/lib/calculator/buildCalculatorResponse';
 import {
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
   });
   if (!country || !box) return NextResponse.json({ available: false, reason: 'unsupported_combination' });
 
-  const [rules, landed, approved] = await Promise.all([
+  const [rules, landed, approved, corridors] = await Promise.all([
     prisma.pricingRule.findMany({
       where: {
         active: true,
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
     prisma.publicPriceRange.findFirst({
       where: { boxConfigId: box.id, countryId: country.id, active: true },
     }),
+    prisma.logisticsCost.findMany({ where: { active: true, countryId: country.id } }),
   ]);
 
   const range = resolvePublicRange({
@@ -70,6 +72,18 @@ export async function POST(req: Request) {
       costEur: Number(l.costEur),
       active: l.active,
     })),
+    logistics: selectActiveCorridor(
+      corridors.map((l) => ({
+        id: l.id,
+        countryId: l.countryId,
+        route: l.route,
+        freightEur: l.freightEur ? Number(l.freightEur) : 0,
+        inlandEur: l.inlandEur ? Number(l.inlandEur) : 0,
+        otherEur: l.otherEur ? Number(l.otherEur) : 0,
+        active: l.active,
+      })),
+      country.id,
+    ),
   });
   if (!range.available) return NextResponse.json({ available: false, reason: 'no_estimate' });
 
