@@ -2,13 +2,23 @@
 # ==============================================================================
 # OpsVale Platform — Production VPS Deployment Script
 # ==============================================================================
+# This script PULLS a prebuilt image from GHCR (built by GitHub Actions) instead
+# of building on the VPS. The server never runs npm/next build → fast deploys.
+#
 # Usage:
-#   bash deploy.sh             # Pull latest main and deploy
-#   bash deploy.sh --no-pull   # Deploy current files without pulling from git
-#   bash deploy.sh --seed      # Deploy and run database seed
+#   bash deploy.sh                 # Pull latest git + latest GHCR image, deploy
+#   bash deploy.sh --no-pull       # Skip git pull; still pulls the GHCR image
+#   bash deploy.sh --seed          # Also run the database seed
+#   IMAGE_TAG=<sha> bash deploy.sh # Deploy/roll back to a specific image tag
+#
+# One-time GHCR auth (private package): either run `docker login ghcr.io` once,
+# or export GHCR_USER + GHCR_TOKEN (a PAT with read:packages) before running.
 # ==============================================================================
 
 set -eo pipefail
+
+IMAGE="ghcr.io/aniisziidan/opsvalepizza"
+export IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 # Automatically resolve and change to project root directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -117,28 +127,45 @@ if ! grep -q "RESEND_API_KEY=" .env.production 2>/dev/null; then
     echo 'EMAIL_FROM="\"OpsVale Customer Service\" <customerservice@opsvale.com>"' >> .env.production
 fi
 
-# 4. Build application container
-log_info "Building application Docker container (${APP_CONTAINER})..."
-$DOCKER_COMPOSE -f $COMPOSE_FILE build app
+# 4. Authenticate to GHCR (only if creds are provided; otherwise assume an
+#    existing `docker login ghcr.io` session persisted in ~/.docker/config.json)
+if [ -n "${GHCR_TOKEN:-}" ] && [ -n "${GHCR_USER:-}" ]; then
+    log_info "Logging in to GHCR as ${GHCR_USER}..."
+    echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+fi
 
-# 5. Start/Restart services (ensure Postgres is up and healthy, swap app container)
+# 5. Pull the prebuilt image (built & pushed by GitHub Actions)
+log_info "Pulling image ${IMAGE}:${IMAGE_TAG} from GHCR..."
+if ! $DOCKER_COMPOSE -f $COMPOSE_FILE pull app; then
+    log_error "Failed to pull ${IMAGE}:${IMAGE_TAG}. Is the package private and are you logged in?"
+    log_error "Run 'docker login ghcr.io' once, or export GHCR_USER + GHCR_TOKEN."
+    exit 1
+fi
+
+# 6. Start/Restart services (ensure Postgres is up and healthy, swap app container)
 log_info "Starting database and dependencies..."
 $DOCKER_COMPOSE -f $COMPOSE_FILE up -d postgres
 
-log_info "Deploying updated application container..."
+log_info "Deploying updated application container (${APP_CONTAINER})..."
 $DOCKER_COMPOSE -f $COMPOSE_FILE up -d --no-deps app
 
-# 6. Apply database schema sync
-log_info "Applying Prisma database migrations & schema updates..."
-$DOCKER_COMPOSE -f $COMPOSE_FILE exec -T app npx prisma db push --accept-data-loss
+# 7. Apply database schema sync
+#    NOTE: uses `db push` (without --accept-data-loss) because 6 models
+#    (Notification, Visitor, AnalyticsEvent, PushSubscription, SystemIncident,
+#    TemporaryUpload) are not yet covered by files in prisma/migrations. Without
+#    --accept-data-loss, Prisma applies additive changes and ABORTS rather than
+#    silently dropping data. TODO: generate the missing migration + baseline the
+#    prod DB, then switch this line to `prisma migrate deploy`.
+log_info "Applying Prisma schema sync (non-destructive)..."
+$DOCKER_COMPOSE -f $COMPOSE_FILE exec -T app npx prisma db push
 
-# 7. Optional seeding
+# 8. Optional seeding
 if [[ "$*" == *"--seed"* ]]; then
     log_info "Seeding database with initial reference data..."
     $DOCKER_COMPOSE -f $COMPOSE_FILE exec -T app npx prisma db seed
 fi
 
-# 8. Health check probe
+# 9. Health check probe
 log_info "Verifying application health probe at ${HEALTH_URL}..."
 MAX_RETRIES=15
 RETRY_COUNT=0
@@ -162,7 +189,7 @@ else
     $DOCKER_COMPOSE -f $COMPOSE_FILE logs --tail=20 app
 fi
 
-# 9. Clean up dangling images to save VPS disk space
+# 10. Clean up dangling images to save VPS disk space
 log_info "Cleaning up unused Docker images..."
 docker image prune -f > /dev/null 2>&1 || true
 

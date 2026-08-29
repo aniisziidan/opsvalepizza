@@ -1,0 +1,33 @@
+# Dependencies & build output (reinstalled/rebuilt inside the image)
+node_modules
+.next
+dist
+coverage
+
+# Local env & secrets — must NEVER be copied into the image
+.env
+.env.local
+.env.production
+.env.*.local
+
+# VCS & CI
+.git
+.github
+.gitignore
+
+# Runtime/local-only data
+uploads
+playwright-report
+test-results
+scratch
+
+# Editor / OS noise
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Docs & design assets not needed at runtime
+google stich design
+assets
+docs
+*.md
