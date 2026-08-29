@@ -149,23 +149,52 @@ $DOCKER_COMPOSE -f $COMPOSE_FILE up -d postgres
 log_info "Deploying updated application container (${APP_CONTAINER})..."
 $DOCKER_COMPOSE -f $COMPOSE_FILE up -d --no-deps app
 
-# 7. Apply database schema sync
-#    NOTE: uses `db push` (without --accept-data-loss) because 6 models
-#    (Notification, Visitor, AnalyticsEvent, PushSubscription, SystemIncident,
-#    TemporaryUpload) are not yet covered by files in prisma/migrations. Without
-#    --accept-data-loss, Prisma applies additive changes and ABORTS rather than
-#    silently dropping data. TODO: generate the missing migration + baseline the
-#    prod DB, then switch this line to `prisma migrate deploy`.
-log_info "Applying Prisma schema sync (non-destructive)..."
-$DOCKER_COMPOSE -f $COMPOSE_FILE exec -T app npx prisma db push
+# 7. Back up the database BEFORE any schema change (safety net; keeps last 10)
+PGUSER_VAL="$($DOCKER_COMPOSE -f $COMPOSE_FILE exec -T postgres printenv POSTGRES_USER 2>/dev/null | tr -d '[:space:]')"
+PGDB_VAL="$($DOCKER_COMPOSE -f $COMPOSE_FILE exec -T postgres printenv POSTGRES_DB 2>/dev/null | tr -d '[:space:]')"
+PGUSER_VAL="${PGUSER_VAL:-opsvale}"
+PGDB_VAL="${PGDB_VAL:-opsvale}"
 
-# 8. Optional seeding
+BACKUP_DIR="${SCRIPT_DIR}/backups"
+mkdir -p "$BACKUP_DIR"
+STAMP="$(date '+%Y%m%d-%H%M%S')"
+log_info "Backing up database before schema changes..."
+if $DOCKER_COMPOSE -f $COMPOSE_FILE exec -T postgres pg_dump -U "$PGUSER_VAL" "$PGDB_VAL" > "${BACKUP_DIR}/db-${STAMP}.sql" 2>/dev/null && [ -s "${BACKUP_DIR}/db-${STAMP}.sql" ]; then
+    gzip -f "${BACKUP_DIR}/db-${STAMP}.sql"
+    log_success "Database backup saved: backups/db-${STAMP}.sql.gz"
+    # Retain only the 10 most recent backups
+    ls -1t "${BACKUP_DIR}"/db-*.sql.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
+else
+    rm -f "${BACKUP_DIR}/db-${STAMP}.sql"
+    log_warn "Database backup could not be created — continuing, but proceed with caution."
+fi
+
+# 8. Apply database migrations (versioned & reviewable — replaces `db push`)
+#    One-time auto-baseline: a database that already has application tables but
+#    no Prisma migration history (i.e. it was first created with `db push`) is
+#    marked as already at the baseline, so migrate deploy does NOT try to
+#    recreate existing tables. Fresh/empty databases skip this and are built
+#    normally by migrate deploy.
+log_info "Applying database migrations..."
+BASELINE_MIGRATION="0_init"
+HAS_HISTORY="$($DOCKER_COMPOSE -f $COMPOSE_FILE exec -T postgres psql -U "$PGUSER_VAL" -d "$PGDB_VAL" -tAc "SELECT to_regclass('public._prisma_migrations')" 2>/dev/null | tr -d '[:space:]')"
+HAS_TABLES="$($DOCKER_COMPOSE -f $COMPOSE_FILE exec -T postgres psql -U "$PGUSER_VAL" -d "$PGDB_VAL" -tAc "SELECT to_regclass('public.\"AdminUser\"')" 2>/dev/null | tr -d '[:space:]')"
+
+if [ -z "$HAS_HISTORY" ] && [ -n "$HAS_TABLES" ]; then
+    log_warn "Existing database without migration history detected — baselining once..."
+    $DOCKER_COMPOSE -f $COMPOSE_FILE exec -T app npx prisma migrate resolve --applied "$BASELINE_MIGRATION" \
+        || log_warn "Baseline step reported an issue (it may already be baselined)."
+fi
+
+$DOCKER_COMPOSE -f $COMPOSE_FILE exec -T app npx prisma migrate deploy
+
+# 9. Optional seeding
 if [[ "$*" == *"--seed"* ]]; then
     log_info "Seeding database with initial reference data..."
     $DOCKER_COMPOSE -f $COMPOSE_FILE exec -T app npx prisma db seed
 fi
 
-# 9. Health check probe
+# 10. Health check probe
 log_info "Verifying application health probe at ${HEALTH_URL}..."
 MAX_RETRIES=15
 RETRY_COUNT=0
@@ -189,7 +218,7 @@ else
     $DOCKER_COMPOSE -f $COMPOSE_FILE logs --tail=20 app
 fi
 
-# 10. Clean up dangling images to save VPS disk space
+# 11. Clean up dangling images to save VPS disk space
 log_info "Cleaning up unused Docker images..."
 docker image prune -f > /dev/null 2>&1 || true
 
