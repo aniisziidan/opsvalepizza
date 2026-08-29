@@ -2,6 +2,9 @@ import { prisma } from '@/lib/db';
 import { LeadStatus, LEAD_STATUS_LABEL } from '@/lib/types';
 import { formatBoxSpec } from './formatters';
 import { ActivityType, QuoteStatus, RuleScope, CostSource, PricingEntityType, PricingAuditAction, Role, AdminAuditAction } from '@prisma/client';
+import { selectActiveCorridor, effectiveLandedCost, type CorridorCandidate } from '@/lib/pricing/logistics';
+import { resolvePublicRange } from '@/lib/pricing/publicRange';
+import { compactBreakdownLines } from '@/lib/pricing/breakdownFormat';
 
 export interface LeadSummaryRow {
   id: string;
@@ -875,6 +878,85 @@ export async function getLogisticsData(): Promise<LogisticsRow[]> {
     otherEur: l.otherEur?.toString() || null,
     active: l.active,
   }));
+}
+
+/** Active logistics corridors as pricing candidates (numbers, not Decimals/strings). */
+export async function getActiveCorridorCandidates(): Promise<CorridorCandidate[]> {
+  const rows = await prisma.logisticsCost.findMany({ where: { active: true } });
+  return rows.map((l) => ({
+    id: l.id,
+    countryId: l.countryId,
+    route: l.route,
+    freightEur: l.freightEur ? Number(l.freightEur) : 0,
+    inlandEur: l.inlandEur ? Number(l.inlandEur) : 0,
+    otherEur: l.otherEur ? Number(l.otherEur) : 0,
+    active: l.active,
+  }));
+}
+
+export interface QuotePricingGuidance {
+  available: boolean;
+  countryName: string;
+  compact: { label: string; valueEur: number }[];
+  markupMinPct: number;
+  markupMaxPct: number;
+  suggestedMinEur: number;
+  suggestedMaxEur: number;
+  noLogisticsConfigured: boolean;
+}
+
+/** Compute the compact pricing guidance shown in the quote builder for a lead. */
+export async function getQuotePricingGuidance(leadId: string): Promise<QuotePricingGuidance | null> {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    include: { quoteRequest: true, calcData: true },
+  });
+  if (!lead) return null;
+
+  const countryCode =
+    lead.quoteRequest?.deliveryCountryCode || lead.calcData?.countryCode || null;
+  const sizeLabel = lead.quoteRequest?.standardBoxSize || lead.calcData?.boxSize || null;
+  const monthlyVolume = lead.quoteRequest?.monthlyVolume || lead.calcData?.monthlyVolume || 0;
+  const material = lead.quoteRequest?.material || lead.calcData?.material || 'KRAFT';
+  const print = lead.quoteRequest?.print || lead.calcData?.print || 'PLAIN';
+  if (!countryCode || !sizeLabel) return null;
+
+  const country = await prisma.country.findUnique({ where: { code: countryCode } });
+  const box = await prisma.boxConfig.findUnique({
+    where: { sizeLabel_material_print: { sizeLabel, material, print } },
+  });
+  if (!country || !box) return null;
+
+  const [rules, landed, approved, corridors] = await Promise.all([
+    prisma.pricingRule.findMany({
+      where: { active: true, OR: [{ scope: 'GLOBAL' }, { countryId: country.id }, { boxConfigId: box.id }] },
+    }),
+    prisma.landedCost.findMany({ where: { active: true, boxConfigId: box.id, countryId: country.id } }),
+    prisma.publicPriceRange.findFirst({ where: { boxConfigId: box.id, countryId: country.id, active: true } }),
+    getActiveCorridorCandidates(),
+  ]);
+
+  const range = resolvePublicRange({
+    boxConfigId: box.id,
+    countryId: country.id,
+    monthlyVolume,
+    approvedRange: approved && approved.active ? { minEur: Number(approved.minEur), maxEur: Number(approved.maxEur) } : null,
+    markupRules: rules.map((r) => ({ scope: r.scope, countryId: r.countryId, boxConfigId: r.boxConfigId, markupMin: Number(r.markupMin), markupMax: Number(r.markupMax), active: r.active })),
+    landedCosts: landed.map((l) => ({ boxConfigId: l.boxConfigId, countryId: l.countryId, qtyTierMin: l.qtyTierMin, qtyTierMax: l.qtyTierMax, costEur: Number(l.costEur), active: l.active })),
+    logistics: selectActiveCorridor(corridors, country.id),
+  });
+
+  const breakdown = range.breakdown ?? effectiveLandedCost(0, null);
+  return {
+    available: range.available,
+    countryName: country.name,
+    compact: compactBreakdownLines(breakdown, country.name),
+    markupMinPct: Math.round(range.markupMin * 1000) / 10,
+    markupMaxPct: Math.round(range.markupMax * 1000) / 10,
+    suggestedMinEur: range.minEur,
+    suggestedMaxEur: range.maxEur,
+    noLogisticsConfigured: breakdown.noLogisticsConfigured,
+  };
 }
 
 export interface AdminUserRow {
