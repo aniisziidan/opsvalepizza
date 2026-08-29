@@ -1,8 +1,9 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Image is built & pushed by GitHub Actions (.github/workflows/deploy.yml).
+    # The VPS pulls this finished image instead of building locally.
+    # Override IMAGE_TAG to pin/roll back to a specific commit SHA.
+    image: ghcr.io/aniisziidan/opsvalepizza:${IMAGE_TAG:-latest}
     container_name: opsvale-app
     restart: unless-stopped
     ports:

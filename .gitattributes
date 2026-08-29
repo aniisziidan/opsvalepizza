@@ -1,0 +1,7 @@
+# Force LF on files that run on the Linux VPS / inside containers.
+# Prevents Windows CRLF from breaking shell scripts (`bad interpreter` / `\r`).
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+deploy-remote.sh text eol=lf
