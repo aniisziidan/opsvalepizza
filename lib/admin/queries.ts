@@ -352,6 +352,102 @@ export async function getLeadsSummary(
   };
 }
 
+export interface ContactSummaryRow {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  jobTitle: string | null;
+  company: {
+    id: string;
+    name: string;
+    website: string | null;
+    countryCode: string | null;
+  };
+  leadsCount: number;
+  latestLead?: {
+    id: string;
+    code: string;
+    status: LeadStatus;
+    createdAt: string;
+  } | null;
+}
+
+/**
+ * Fetch paginated CRM contacts with associated company and lead inquiry records.
+ */
+export async function getCRMContactsSummary(
+  opts: { page?: number; pageSize?: number; search?: string } = {}
+): Promise<PaginatedResult<ContactSummaryRow>> {
+  const page = Math.max(1, opts.page || 1);
+  const pageSize = Math.min(100, Math.max(1, opts.pageSize || 50));
+  const skip = (page - 1) * pageSize;
+
+  const whereClause: any = {};
+  const rawSearch = (opts.search || '').trim().slice(0, 200);
+  if (rawSearch.length > 0) {
+    whereClause.OR = [
+      { name: { contains: rawSearch, mode: 'insensitive' } },
+      { email: { contains: rawSearch, mode: 'insensitive' } },
+      { phone: { contains: rawSearch, mode: 'insensitive' } },
+      { jobTitle: { contains: rawSearch, mode: 'insensitive' } },
+      { company: { name: { contains: rawSearch, mode: 'insensitive' } } },
+    ];
+  }
+
+  const [contacts, totalCount] = await Promise.all([
+    prisma.contact.findMany({
+      where: whereClause,
+      include: {
+        company: true,
+        leads: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { id: true, code: true, status: true, createdAt: true },
+        },
+        _count: {
+          select: { leads: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+      skip,
+      take: pageSize,
+    }),
+    prisma.contact.count({ where: whereClause }),
+  ]);
+
+  const items: ContactSummaryRow[] = contacts.map((c) => ({
+    id: c.id,
+    name: c.name,
+    email: c.email,
+    phone: c.phone,
+    jobTitle: c.jobTitle,
+    company: {
+      id: c.company.id,
+      name: c.company.name,
+      website: c.company.website,
+      countryCode: c.company.countryCode,
+    },
+    leadsCount: c._count.leads,
+    latestLead: c.leads[0]
+      ? {
+          id: c.leads[0].id,
+          code: c.leads[0].code,
+          status: c.leads[0].status,
+          createdAt: c.leads[0].createdAt.toISOString(),
+        }
+      : null,
+  }));
+
+  return {
+    items,
+    totalCount,
+    page,
+    pageSize,
+    totalPages: Math.ceil(totalCount / pageSize),
+  };
+}
+
 /**
  * Fetch a single lead by ID with all relations for the detail dossier.
  */
