@@ -10,6 +10,8 @@ import { rateLimiter, getClientIp } from '@/lib/security/rateLimiter';
 import { generateLeadCode } from '@/lib/leads/generateLeadCode';
 import { matchOrCreateCompany } from '@/lib/companies/matchOrCreateCompany';
 import { resolvePublicRange } from '@/lib/pricing/publicRange';
+import { selectActiveCorridor, effectiveLandedCost } from '@/lib/pricing/logistics';
+import { calculatorPricingFields } from '@/lib/pricing/pricingSnapshot';
 import { computeSavings } from '@/lib/calculator/savings';
 import { notifyNewQuote } from '@/lib/email/notifyNewQuote';
 import { emitNotificationEvent } from '@/lib/notifications/dispatcher';
@@ -102,6 +104,14 @@ export async function submitQuoteRequest(
     markupRuleId: string | null;
     publicPriceRangeId: string | null;
     pricingVersion: string;
+    productCostEur: number;
+    logisticsCostId: string | null;
+    logisticsCorridorName: string | null;
+    freightEur: number;
+    inlandEur: number;
+    otherEur: number;
+    logisticsTotalEur: number;
+    effectiveLandedEur: number;
   } | null = null;
 
   if (payload.calcState) {
@@ -121,7 +131,7 @@ export async function submitQuoteRequest(
     });
 
     if (country && box) {
-      const [rules, landed, approved] = await Promise.all([
+      const [rules, landed, approved, corridors] = await Promise.all([
         prisma.pricingRule.findMany({
           where: {
             active: true,
@@ -134,7 +144,21 @@ export async function submitQuoteRequest(
         prisma.publicPriceRange.findFirst({
           where: { boxConfigId: box.id, countryId: country.id, active: true },
         }),
+        prisma.logisticsCost.findMany({ where: { active: true, countryId: country.id } }),
       ]);
+
+      const corridor = selectActiveCorridor(
+        corridors.map((l) => ({
+          id: l.id,
+          countryId: l.countryId,
+          route: l.route,
+          freightEur: l.freightEur ? Number(l.freightEur) : 0,
+          inlandEur: l.inlandEur ? Number(l.inlandEur) : 0,
+          otherEur: l.otherEur ? Number(l.otherEur) : 0,
+          active: l.active,
+        })),
+        country.id,
+      );
 
       const rangeResult = resolvePublicRange({
         boxConfigId: box.id,
@@ -160,6 +184,7 @@ export async function submitQuoteRequest(
           costEur: Number(l.costEur),
           active: l.active,
         })),
+        logistics: corridor,
       });
 
       if (rangeResult.available) {
@@ -168,6 +193,10 @@ export async function submitQuoteRequest(
           monthlyVolume: rawCalc.monthlyVolume,
           priceRange: { minEur: rangeResult.minEur, maxEur: rangeResult.maxEur },
         });
+
+        const pricingFields = calculatorPricingFields(
+          effectiveLandedCost(landed[0] ? Number(landed[0].costEur) : 0, corridor),
+        );
 
         calcSnapshotData = {
           countryCode: rawCalc.country,
@@ -189,6 +218,7 @@ export async function submitQuoteRequest(
           markupRuleId: rules[0]?.id || null,
           publicPriceRangeId: approved?.id || null,
           pricingVersion: 'v1-2026',
+          ...pricingFields,
         };
       }
     }
