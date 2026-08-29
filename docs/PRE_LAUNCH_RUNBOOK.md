@@ -1,9 +1,35 @@
 # OpsVale Pre-Launch Runbook — provably-safe VPS launch
 
+> ## ⚠️ ACTUAL DEPLOYMENT STATUS & TOPOLOGY (updated 2026-08-30)
+> This runbook was originally written assuming a **Caddy** TLS profile. On the real VPS that is **not**
+> the case — the corrections here take precedence over the Caddy-specific sections further down.
+>
+> **Real topology:** `Cloudflare (edge TLS) → host nginx (:80/:443) → opsvale-app 127.0.0.1:3010`.
+> It's a **shared VPS** (also hosts an education platform on `*.opsvale.com` + `penguin-portfolio`).
+> The bundled **Caddy profile is unused and cannot start** (nginx owns the ports). **Editing nginx has
+> high blast radius — confirm before touching it.** Ignore the `--profile proxy` / `Caddyfile` /
+> Let's-Encrypt-via-Caddy steps in §3; TLS is handled by Cloudflare's edge.
+>
+> **Status of the three blockers:**
+> - ✅ **CRON** (§2) — `CRON_SECRET` set (64-char) + 3 jobs scheduled in root crontab (another
+>   project's jobs preserved; crontab backed up). Endpoints proven 401-without / 200-with token.
+> - ✅ **TLS / real client IP** — `TRUST_PROXY=true` set; the nginx `opsvale` vhost forwards
+>   `X-Forwarded-For`/`X-Real-IP`. Public **HTTPS is live** via Cloudflare edge (`https://opsvale.com`).
+> - ✅ **Country capture** — `opsvale.com` is already behind Cloudflare, which injects `CF-IPCountry`;
+>   nginx forwards it; `TRUST_PROXY=true` lets the app read it. Verified end-to-end (test event → `EG`).
+> - 🟡 **Legal identity** (§1) — the pages were SSG-baked; fixed to `force-dynamic` (PR #14) so they
+>   read **live env**. VPS currently shows honest **`N/A`** (no fabricated KvK/VAT). **Remaining true
+>   gate:** set real `COMPANY_*` in `.env.production` + `--force-recreate` the app **after registering
+>   the entity — no image rebuild needed.**
+>
+> **Open (non-code):** decide pre-launch public exposure (site is live with N/A legal data); rotate any
+> Cloudflare token shared in plaintext. Full record in memory `opsvale-tls-caddy-decision`.
+
 > **Scope:** the three launch-blocking operational items from `COMPLETE_PROJECT_AUDIT.md` §37:
 > **(1)** verified legal identity, **(2)** `CRON_SECRET` + scheduled cron jobs, **(3)** TLS termination.
-> **TLS decision (locked):** the bundled **Caddy `proxy` profile** terminates HTTPS. The app binds
-> `127.0.0.1:3010`; Caddy owns `:80`/`:443` and auto-provisions Let's Encrypt.
+> **TLS decision (~~locked~~ superseded — see banner above):** ~~the bundled Caddy `proxy` profile
+> terminates HTTPS.~~ Actual TLS = **Cloudflare edge → host nginx**. The app binds `127.0.0.1:3010`;
+> nginx (not Caddy) proxies it and Cloudflare provisions the public cert.
 >
 > **How to use this doc:** run top to bottom on the VPS. Every step ends with a **Proof** command
 > whose *shown output* is the pass condition — "provably safe" means you saw the proof, not that you
