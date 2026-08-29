@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { processAnalyticsEvent } from '@/lib/analytics/ingestion';
 import { checkRateLimit, getClientIp, createRateLimitResponse } from '@/lib/ratelimit/rateLimiter';
+import { hasServerConsent } from '@/lib/consent/consentManager';
 import { AnalyticsEventType, DeviceType } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,17 @@ export async function POST(req: NextRequest) {
 
   if (!rateLimitResult.success) {
     return createRateLimitResponse(rateLimitResult);
+  }
+
+  // 2. Server-side GDPR consent gate. The browser provider already gates on consent, but the
+  //    server must independently verify it so a persistent anonymous identifier can never be
+  //    stored for a visitor who did not consent (e.g. a direct/non-browser POST). Filtered
+  //    events are acknowledged with 202 and never written to the database.
+  if (!hasServerConsent(req.headers.get('cookie'), 'analytics')) {
+    return NextResponse.json(
+      { success: false, filtered: 'consent_required' },
+      { status: 202, headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } },
+    );
   }
 
   try {

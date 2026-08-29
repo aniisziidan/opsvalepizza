@@ -21,6 +21,27 @@ services:
     volumes:
       - uploads_data:/app/uploads
 
+  # Reverse proxy / TLS termination. Opt-in: only starts when the `proxy` profile is enabled
+  # (`docker compose --profile proxy up -d`). Omit it if TLS is terminated by a host-level proxy.
+  caddy:
+    image: caddy:2-alpine
+    container_name: opsvale-caddy
+    restart: unless-stopped
+    profiles: [proxy]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-opsvale.eu}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - opsvale-network
+
   postgres:
     image: postgres:16-alpine
     container_name: opsvale-postgres
@@ -42,6 +63,8 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   opsvale-network:

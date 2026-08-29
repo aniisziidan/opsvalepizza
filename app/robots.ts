@@ -16,7 +16,11 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', '/calculator', '/products', '/how-it-works', '/about', '/quote'],
+      // Canonical public content lives under /{locale}/… (e.g. /en/products);
+      // `allow: '/'` covers every localized path. The old explicit entries
+      // (/calculator, /products, …) were non-localized redirect stubs, not real
+      // canonical URLs, so they are dropped in favour of the wildcard.
+      allow: '/',
       disallow: ['/admin/', '/proposals/', '/api/'],
     },
     sitemap: `${appUrl}/sitemap.xml`,

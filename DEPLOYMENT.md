@@ -85,15 +85,84 @@ IMAGE_TAG=<git-sha> bash deploy.sh
 database) → `/api/health` probe. The compose file `docker-compose.prod.yml` references the GHCR image
 via `image:` (override with `IMAGE_TAG`).
 
+### Database backup & restore
+
+Every `deploy.sh` run takes a safety-net dump **before** migrations, into `backups/db-<timestamp>.sql.gz`
+(gzipped plain-SQL `pg_dump`; the 10 most recent are retained). To take an ad-hoc backup outside a deploy:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > "backups/db-manual-$(date +%Y%m%d-%H%M%S).sql.gz"
+```
+
+**Restore runbook** (recover from a bad migration or data loss). This overwrites current data — confirm
+the target and take a fresh manual dump first if the DB is still reachable.
+
+```bash
+# 1. Stop the app so nothing writes during the restore (leave postgres running).
+docker compose -f docker-compose.prod.yml stop app
+
+# 2. Pick the backup to restore (newest shown first).
+ls -1t backups/db-*.sql.gz
+
+# 3. Drop & recreate the schema, then load the dump. The plain-SQL dumps do NOT
+#    include DROP statements, so reset the public schema first to avoid conflicts.
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+gunzip -c backups/db-<timestamp>.sql.gz | \
+  docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+
+# 4. Bring the app back up. The restored dump already carries the Prisma
+#    migration history, so `migrate deploy` on the next deploy is a no-op.
+docker compose -f docker-compose.prod.yml up -d app
+
+# 5. Verify.
+curl -fsS http://127.0.0.1:3010/api/health
+```
+
+`$POSTGRES_USER` / `$POSTGRES_DB` come from `.env.production`; if unset in your shell, substitute the
+values from that file (defaults: `opsvale_prod` / `opsvale_db`).
+
+### TLS / reverse proxy
+
+The app listens on `127.0.0.1:3010` and expects TLS to be terminated in front of it. Two options:
+
+- **Host-level proxy (default):** run Nginx/Caddy/Cloudflare on the host, terminate HTTPS, and proxy
+  to `127.0.0.1:3010`. Set `TRUST_PROXY=true` so forwarded client IPs are honored.
+- **Bundled Caddy (opt-in):** the compose file ships an `opsvale-caddy` service (automatic HTTPS via
+  Let's Encrypt) behind the `proxy` profile. Set `DOMAIN` in `.env.production`, point DNS at the VPS,
+  then start it explicitly:
+
+  ```bash
+  docker compose -f docker-compose.prod.yml --profile proxy up -d
+  ```
+
+  It is not started by `deploy.sh`, so it never conflicts with an existing host proxy on :80/:443.
+
 ---
 
 ## 5. Automated Scheduled Cron Maintenance
 
-Configure a daily cron job (via cron daemon, AWS EventBridge, or Cloudflare Workers) to trigger the upload cleanup endpoint:
+Configure daily cron jobs (via cron daemon, AWS EventBridge, or Cloudflare Workers) to trigger the maintenance endpoints. Both require the bearer token and **fail closed in production** — if `CRON_SECRET` is unset, the endpoints return 401 rather than running unauthenticated.
 
 ```bash
 # Trigger daily orphaned upload cleanup (older than 24h)
 curl -X POST https://opsvale.com/api/cron/cleanup-uploads \
+  -H "Authorization: Bearer <YOUR_CRON_SECRET>"
+
+# Trigger analytics data-retention purge (GDPR). Deletes events/sessions older than
+# ANALYTICS_RETENTION_DAYS (default 365) / SESSION_RETENTION_DAYS (default 180).
+curl -X POST https://opsvale.com/api/cron/prune-analytics \
+  -H "Authorization: Bearer <YOUR_CRON_SECRET>"
+
+# Trigger website-health / conversion anomaly detection. Recomputes the analytics
+# health alerts over a rolling 7-day window and pushes actionable ones (traffic
+# surge/decline, high exit drop-off) to the notification center. Deduped by
+# incidentKey, so an hourly schedule is safe. Recommended: hourly.
+curl -X POST https://opsvale.com/api/cron/detect-anomalies \
   -H "Authorization: Bearer <YOUR_CRON_SECRET>"
 ```
 

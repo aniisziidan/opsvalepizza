@@ -6,10 +6,16 @@ This runbook provides step-by-step instructions for deploying the **OpsVale B2B 
 
 ## 📋 Architecture Overview
 
-The production stack consists of 3 isolated Docker containers orchestrated via `docker-compose.prod.yml`:
-1. **`opsvale-caddy`**: Automated Let's Encrypt TLS reverse proxy with HTTP/2, HTTP/3, and Brotli compression.
-2. **`opsvale-app`**: Multi-stage standalone Next.js 15 Node.js Alpine container.
+The production stack is orchestrated via `docker-compose.prod.yml`:
+1. **`opsvale-caddy`**: Automated Let's Encrypt TLS reverse proxy. **Opt-in** — it lives behind the
+   `proxy` compose profile, so start it with `--profile proxy`. Omit it if TLS is terminated by a
+   host-level proxy (Nginx/Cloudflare) forwarding to `127.0.0.1:3010`.
+2. **`opsvale-app`**: Multi-stage standalone Next.js 15 Node.js Alpine container (binds `127.0.0.1:3010`).
 3. **`opsvale-postgres`**: PostgreSQL 16 Alpine database with health checks and persistent volume storage.
+
+> **Note:** the canonical deploy path pulls a prebuilt image from GHCR via `bash deploy.sh` (which
+> also backs up the DB and runs `prisma migrate deploy`). The VPS never builds the image — see
+> `AGENTS.md` / `DEPLOYMENT.md`. The manual `docker compose` commands below are for first-time bootstrap.
 
 ---
 
@@ -110,8 +116,9 @@ EVIDENCE_EU_STORAGE_ONLY="true"
 ### 3. Deploy Containers & Run Initial Database Migration
 
 ```bash
-# Build and start all 3 containers in background
-docker compose -f docker-compose.prod.yml up -d --build
+# Start app + postgres (+ Caddy TLS proxy via the opt-in profile). Drop `--profile proxy`
+# if you terminate TLS with a host-level proxy instead.
+docker compose -f docker-compose.prod.yml --profile proxy up -d
 
 # Run database migrations inside the app container
 docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
@@ -179,16 +186,36 @@ chmod +x /opt/opsvale/scripts/backup.sh
 (crontab -l 2>/dev/null; echo "0 3 * * * /opt/opsvale/scripts/backup.sh") | crontab -
 ```
 
+### Application maintenance crons
+
+Schedule the two bearer-secured maintenance endpoints. Both **fail closed** — they return 401 in
+production unless `CRON_SECRET` is set in `.env.production` and passed as the bearer token.
+
+```bash
+# Daily: orphaned upload cleanup + GDPR analytics retention purge
+(crontab -l 2>/dev/null; cat <<'CRON'
+15 3 * * * curl -fsS -X POST -H "Authorization: Bearer <YOUR_CRON_SECRET>" http://127.0.0.1:3010/api/cron/cleanup-uploads
+30 3 * * * curl -fsS -X POST -H "Authorization: Bearer <YOUR_CRON_SECRET>" http://127.0.0.1:3010/api/cron/prune-analytics
+CRON
+) | crontab -
+```
+
 ---
 
-### 6. Zero-Downtime Updates
+### 6. Updates (pull the prebuilt image — never build on the VPS)
 
-To deploy new code updates:
+Code updates are built by **GitHub Actions** on merge to `main` and pushed to GHCR; the VPS only
+pulls. **Do not** run `docker compose build` on the server — it contradicts the canonical pipeline in
+`AGENTS.md` and the Architecture note above. To roll a new build out:
 
 ```bash
 cd /opt/opsvale
-git pull origin main
-docker compose -f docker-compose.prod.yml build app
-docker compose -f docker-compose.prod.yml up -d --no-deps app
-docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
+# Pulls the latest GHCR image, backs up the DB, runs `prisma migrate deploy`, health-checks:
+bash deploy.sh
+
+# Pin/roll back to a specific build instead of :latest:
+IMAGE_TAG=<git-sha> bash deploy.sh
 ```
+
+`deploy.sh` restarts only the `app` service against the new image; `postgres` (and the opt-in `caddy`
+proxy) keep running. See `DEPLOYMENT.md` §4 for the full flow.

@@ -13,17 +13,27 @@ export const RATE_LIMIT_TIERS: Record<string, RateLimitConfig> = {
 };
 
 /**
- * Extracts client IP safely from request headers (x-forwarded-for, x-real-ip) or falls back to '127.0.0.1'.
+ * Extracts the client IP safely from request headers.
+ *
+ * Forwarded headers (`x-forwarded-for` / `x-real-ip`) are attacker-controllable and are only
+ * honored when `TRUST_PROXY=true` — i.e. when the app genuinely sits behind a reverse proxy that
+ * sets them. Without that flag the headers are ignored so a client cannot spoof its identity to
+ * evade rate limiting. Falls back to '127.0.0.1'.
  */
 export function getClientIp(req: Request | Headers): string {
   const headers = req instanceof Request ? req.headers : req;
-  const forwarded = headers.get('x-forwarded-for');
-  if (forwarded) {
-    const firstIp = forwarded.split(',')[0].trim();
-    if (firstIp) return firstIp;
+  const trustProxy = process.env.TRUST_PROXY === 'true';
+
+  if (trustProxy) {
+    const forwarded = headers.get('x-forwarded-for');
+    if (forwarded) {
+      const firstIp = forwarded.split(',')[0].trim();
+      if (firstIp) return firstIp;
+    }
+    const realIp = headers.get('x-real-ip');
+    if (realIp) return realIp.trim();
   }
-  const realIp = headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
+
   return '127.0.0.1';
 }
 

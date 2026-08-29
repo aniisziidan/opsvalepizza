@@ -46,10 +46,12 @@ export function getLegalConfig(): LegalConfig {
   const contactEmail = process.env.LEGAL_CONTACT_EMAIL || 'legal@opsvale.eu';
   const phone = process.env.LEGAL_PHONE || '+31 10 400 9200';
 
-  // Evidence-backed certification flags (Principle: Zero unbacked claims)
+  // Evidence-backed certification flags (Principle: Zero unbacked claims).
+  // Every flag is opt-in and defaults to false — a certification is only advertised when its
+  // env var is explicitly set to "true", so the site never makes an unverified legal claim.
   const fscCertified = process.env.EVIDENCE_FSC_CERTIFIED === 'true';
-  const foodGradeEu1935_2004 = process.env.EVIDENCE_FOOD_GRADE_1935_2004 !== 'false';
-  const euStorageOnly = process.env.EVIDENCE_EU_STORAGE_ONLY !== 'false';
+  const foodGradeEu1935_2004 = process.env.EVIDENCE_FOOD_GRADE_1935_2004 === 'true';
+  const euStorageOnly = process.env.EVIDENCE_EU_STORAGE_ONLY === 'true';
   const iso9001Certified = process.env.EVIDENCE_ISO9001_CERTIFIED === 'true';
 
   return {

@@ -43,6 +43,40 @@ export function serializeConsentCookie(record: CookieConsentRecord): string {
 }
 
 /**
+ * Server-side helper: extract the consent record from a raw `Cookie` request header.
+ * Mirrors {@link getClientConsent} but works from `req.headers.get('cookie')`.
+ */
+export function getConsentFromCookieHeader(
+  cookieHeader: string | null | undefined,
+): CookieConsentRecord | null {
+  if (!cookieHeader) return null;
+
+  for (const part of cookieHeader.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const name = part.slice(0, idx).trim();
+    if (name !== COOKIE_CONSENT_NAME) continue;
+    const val = part.slice(idx + 1).trim();
+    if (val) return parseConsentCookie(val);
+  }
+
+  return null;
+}
+
+/**
+ * Server-side consent gate: returns whether a given category is authorized based on the raw
+ * `Cookie` header. Used to enforce GDPR consent on ingestion endpoints so that a persistent
+ * identifier cannot be stored for a visitor who never consented — regardless of what the client
+ * chooses to send.
+ */
+export function hasServerConsent(
+  cookieHeader: string | null | undefined,
+  category: ConsentCategory,
+): boolean {
+  return isCategoryAllowed(category, getConsentFromCookieHeader(cookieHeader));
+}
+
+/**
  * Client-side helper to read consent from document.cookie.
  */
 export function getClientConsent(): CookieConsentRecord | null {
