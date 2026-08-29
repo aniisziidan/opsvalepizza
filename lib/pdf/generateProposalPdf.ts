@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import { CustomerProposalDTO } from '@/app/proposals/[token]/actions';
 import { Locale, DEFAULT_LOCALE, isValidLocale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/getDictionary';
+import { formatPdfDecimal, formatPdfInteger, formatPdfDate } from './formatLocale';
 
 /**
  * Generates an official, vector-quality commercial proposal PDF buffer.
@@ -66,7 +67,7 @@ export async function generateProposalPdf(
     } else if (proposal.status === 'ACCEPTED') {
       doc.rect(40, 40, 515, 22).fill('#d1fae5');
       const acceptedDate = proposal.acceptedAt
-        ? new Date(proposal.acceptedAt).toLocaleDateString('en-GB')
+        ? formatPdfDate(targetLocale, proposal.acceptedAt)
         : '';
       doc.fillColor('#065f46').fontSize(8.5).font('Helvetica-Bold').text(
         `${dict.proposal.statusAccepted.toUpperCase()} ${acceptedDate ? `— ${acceptedDate}` : ''}`,
@@ -100,7 +101,7 @@ export async function generateProposalPdf(
     doc.fillColor('#ffffff').fontSize(11).font('Helvetica-Bold').text(proposal.leadCode, 420, startY + 13, { align: 'right', width: 120 });
     doc.fillColor('#8393b5').fontSize(9).font('Helvetica').text(`Revision ${proposal.revision}`, 420, startY + 28, { align: 'right', width: 120 });
     if (proposal.expiresAt && proposal.status === 'SENT') {
-      doc.fillColor('#e3c290').fontSize(7.5).font('Helvetica').text(`${dict.proposal.validUntil}: ${new Date(proposal.expiresAt).toLocaleDateString('en-GB')}`, 380, startY + 42, { align: 'right', width: 160 });
+      doc.fillColor('#e3c290').fontSize(7.5).font('Helvetica').text(`${dict.proposal.validUntil}: ${formatPdfDate(targetLocale, proposal.expiresAt)}`, 380, startY + 42, { align: 'right', width: 160 });
     }
 
     // 4. Customer Block
@@ -115,14 +116,14 @@ export async function generateProposalPdf(
     doc.rect(40, priceY, 515, 52).fill(navy);
 
     doc.fillColor('#8393b5').fontSize(7.5).font('Helvetica').text(dict.proposal.unitPrice.toUpperCase(), 55, priceY + 9);
-    doc.fillColor('#ffdeac').fontSize(15).font('Helvetica-Bold').text(`€${Number(proposal.unitPriceEur).toFixed(4)} / pc`, 55, priceY + 22);
+    doc.fillColor('#ffdeac').fontSize(15).font('Helvetica-Bold').text(`€${formatPdfDecimal(targetLocale, Number(proposal.unitPriceEur), 4)} / pc`, 55, priceY + 22);
 
     doc.fillColor('#8393b5').fontSize(7.5).font('Helvetica').text(dict.proposal.quantity.toUpperCase(), 230, priceY + 9);
-    doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text(`${proposal.orderQuantity.toLocaleString()} pcs`, 230, priceY + 22);
+    doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text(`${formatPdfInteger(targetLocale, proposal.orderQuantity)} pcs`, 230, priceY + 22);
 
     doc.fillColor('#8393b5').fontSize(7.5).font('Helvetica').text(dict.proposal.totalAmount.toUpperCase(), 390, priceY + 9);
     doc.fillColor('#4ade80').fontSize(15).font('Helvetica-Bold').text(
-      `€${Number(proposal.totalEur).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `€${formatPdfDecimal(targetLocale, Number(proposal.totalEur), 2)}`,
       390,
       priceY + 22
     );
@@ -164,7 +165,7 @@ export async function generateProposalPdf(
       specY += 13;
     }
 
-    renderSpecRow('Annualized Volume Target:', `${proposal.monthlyVolume.toLocaleString()} pcs/mo`, specY);
+    renderSpecRow('Annualized Volume Target:', `${formatPdfInteger(targetLocale, proposal.monthlyVolume)} pcs/mo`, specY);
 
     // 7. Logistics & Commercial Terms Section
     const logTitleY = specStartY + 86;
