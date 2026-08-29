@@ -3,25 +3,10 @@ import type { NextConfig } from 'next';
 const isProd = process.env.NODE_ENV === 'production';
 const isProdEnv = process.env.APP_ENV === 'production';
 
-// Content Security Policy directives
-const cspDirectives = [
-  "default-src 'self'",
-  // Development requires unsafe-eval for React Fast Refresh/HMR; production strictly omits unsafe-eval
-  isProd ? "script-src 'self' 'unsafe-inline'" : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com data:",
-  "img-src 'self' data: blob:",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-];
-
+// NOTE: Content-Security-Policy is set per-request in `middleware.ts` so it can carry a unique
+// script nonce (`'nonce-…' 'strict-dynamic'`) instead of `'unsafe-inline'`. It is intentionally
+// NOT declared here — a static header cannot vary the nonce per request.
 const securityHeaders = [
-  {
-    key: 'Content-Security-Policy',
-    value: cspDirectives.join('; '),
-  },
   {
     key: 'X-Frame-Options',
     value: 'DENY',

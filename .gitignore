@@ -13,3 +13,6 @@ playwright-report/
 test-results/
 coverage/
 .DS_Store
+
+# Playwright MCP verification artifacts
+.playwright-mcp/
