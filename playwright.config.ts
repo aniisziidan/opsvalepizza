@@ -8,7 +8,7 @@ export default defineConfig({
   retries: 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -20,8 +20,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
+    command: 'npm run start -- -p 3000 -H 127.0.0.1',
+    url: 'http://127.0.0.1:3000',
     reuseExistingServer: true,
     timeout: 120000,
   },
