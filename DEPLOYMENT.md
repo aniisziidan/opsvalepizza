@@ -85,15 +85,36 @@ IMAGE_TAG=<git-sha> bash deploy.sh
 database) → `/api/health` probe. The compose file `docker-compose.prod.yml` references the GHCR image
 via `image:` (override with `IMAGE_TAG`).
 
+### TLS / reverse proxy
+
+The app listens on `127.0.0.1:3010` and expects TLS to be terminated in front of it. Two options:
+
+- **Host-level proxy (default):** run Nginx/Caddy/Cloudflare on the host, terminate HTTPS, and proxy
+  to `127.0.0.1:3010`. Set `TRUST_PROXY=true` so forwarded client IPs are honored.
+- **Bundled Caddy (opt-in):** the compose file ships an `opsvale-caddy` service (automatic HTTPS via
+  Let's Encrypt) behind the `proxy` profile. Set `DOMAIN` in `.env.production`, point DNS at the VPS,
+  then start it explicitly:
+
+  ```bash
+  docker compose -f docker-compose.prod.yml --profile proxy up -d
+  ```
+
+  It is not started by `deploy.sh`, so it never conflicts with an existing host proxy on :80/:443.
+
 ---
 
 ## 5. Automated Scheduled Cron Maintenance
 
-Configure a daily cron job (via cron daemon, AWS EventBridge, or Cloudflare Workers) to trigger the upload cleanup endpoint:
+Configure daily cron jobs (via cron daemon, AWS EventBridge, or Cloudflare Workers) to trigger the maintenance endpoints. Both require the bearer token and **fail closed in production** — if `CRON_SECRET` is unset, the endpoints return 401 rather than running unauthenticated.
 
 ```bash
 # Trigger daily orphaned upload cleanup (older than 24h)
 curl -X POST https://opsvale.com/api/cron/cleanup-uploads \
+  -H "Authorization: Bearer <YOUR_CRON_SECRET>"
+
+# Trigger analytics data-retention purge (GDPR). Deletes events/sessions older than
+# ANALYTICS_RETENTION_DAYS (default 365) / SESSION_RETENTION_DAYS (default 180).
+curl -X POST https://opsvale.com/api/cron/prune-analytics \
   -H "Authorization: Bearer <YOUR_CRON_SECRET>"
 ```
 

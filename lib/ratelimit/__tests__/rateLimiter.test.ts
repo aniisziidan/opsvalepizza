@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { checkRateLimit, resetRateLimit, createRateLimitResponse, getClientIp } from '../rateLimiter';
 
 describe('Rate Limiter Engine', () => {
@@ -40,14 +40,41 @@ describe('Rate Limiter Engine', () => {
     expect(response.headers.get('X-RateLimit-Limit')).toBe('2');
   });
 
-  it('extracts client IP from x-forwarded-for or x-real-ip headers', () => {
-    const headers1 = new Headers({ 'x-forwarded-for': '203.0.113.195, 70.41.3.18' });
-    expect(getClientIp(headers1)).toBe('203.0.113.195');
+  describe('getClientIp proxy trust', () => {
+    const original = process.env.TRUST_PROXY;
 
-    const headers2 = new Headers({ 'x-real-ip': '198.51.100.22' });
-    expect(getClientIp(headers2)).toBe('198.51.100.22');
+    afterEach(() => {
+      if (original === undefined) delete process.env.TRUST_PROXY;
+      else process.env.TRUST_PROXY = original;
+    });
 
-    const headersEmpty = new Headers();
-    expect(getClientIp(headersEmpty)).toBe('127.0.0.1');
+    it('ignores forwarded headers when TRUST_PROXY is not enabled (unspoofable)', () => {
+      delete process.env.TRUST_PROXY;
+      const headers = new Headers({ 'x-forwarded-for': '203.0.113.195, 70.41.3.18' });
+      expect(getClientIp(headers)).toBe('127.0.0.1');
+    });
+
+    it('trusts x-forwarded-for / x-real-ip only when TRUST_PROXY=true', () => {
+      process.env.TRUST_PROXY = 'true';
+
+      const headers1 = new Headers({ 'x-forwarded-for': '203.0.113.195, 70.41.3.18' });
+      expect(getClientIp(headers1)).toBe('203.0.113.195');
+
+      const headers2 = new Headers({ 'x-real-ip': '198.51.100.22' });
+      expect(getClientIp(headers2)).toBe('198.51.100.22');
+    });
+
+    it('falls back to 127.0.0.1 when trusting a proxy but no forwarded headers present', () => {
+      process.env.TRUST_PROXY = 'true';
+      expect(getClientIp(new Headers())).toBe('127.0.0.1');
+    });
+
+    it('accepts a Request as well as a Headers object', () => {
+      process.env.TRUST_PROXY = 'true';
+      const req = new Request('http://localhost', {
+        headers: { 'x-forwarded-for': '203.0.113.7' },
+      });
+      expect(getClientIp(req)).toBe('203.0.113.7');
+    });
   });
 });

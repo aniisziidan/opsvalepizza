@@ -6,7 +6,7 @@ import {
   quoteSubmissionPayloadSchema,
   type QuoteSubmissionPayload,
 } from '@/lib/validation/quoteRequest';
-import { rateLimiter, getClientIp } from '@/lib/security/rateLimiter';
+import { checkRateLimit, getClientIp, RATE_LIMIT_TIERS } from '@/lib/ratelimit/rateLimiter';
 import { generateLeadCode } from '@/lib/leads/generateLeadCode';
 import { matchOrCreateCompany } from '@/lib/companies/matchOrCreateCompany';
 import { resolvePublicRange } from '@/lib/pricing/publicRange';
@@ -30,8 +30,8 @@ export async function submitQuoteRequest(
   const dummyReq = new Request('http://localhost', { headers: headerList });
   const clientIp = getClientIp(dummyReq);
 
-  const rateCheck = await rateLimiter.check(`quote_submit:${clientIp}`, 5, 10 * 60_000);
-  if (!rateCheck.allowed) {
+  const rateCheck = checkRateLimit(`quote_submit:${clientIp}`, RATE_LIMIT_TIERS.QUOTE_REQUEST);
+  if (!rateCheck.success) {
     return {
       success: false,
       error: 'Submission rate limit reached. Please wait a few minutes before trying again.',
