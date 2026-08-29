@@ -90,8 +90,10 @@ Fast, build-off-the-server deploys (see [AGENTS.md](./AGENTS.md) for the full ag
 All originally planned phases (0–7) plus a notification center and visitor analytics are implemented:
 multilingual public site, calculator, quote flow, CRM, quote/proposal lifecycle, pricing + Excel admin,
 logistics, i18n, legal/consent, analytics, and CI/CD image delivery. Build is green and the Vitest suite
-passes. A 2026-08-29 hardening pass addressed the high-priority audit findings — safe migrations + DB
+passes. A 2026-08-29 hardening pass addressed the audit findings across P1–P3 — safe migrations + DB
 backups, server-side analytics consent, wired GDPR retention purge, nonce-based CSP on dynamic routes,
-a unified TRUST_PROXY-aware rate limiter, fail-closed cron auth, opt-in Caddy TLS, and a sitemap. For a
-full, evidence-based status — including the remediation log (§0) and remaining gaps — see
+a unified TRUST_PROXY-aware rate limiter, fail-closed cron auth, opt-in Caddy TLS, a sitemap, session
+re-validation of admin `active`/role (not just token presence), a localized-canonical robots allow-list,
+and locale-aware (font-safe) proposal-PDF number/date formatting. For a full, evidence-based status —
+including the remediation log (§0) and remaining gaps — see
 [`COMPLETE_PROJECT_AUDIT.md`](./COMPLETE_PROJECT_AUDIT.md).
