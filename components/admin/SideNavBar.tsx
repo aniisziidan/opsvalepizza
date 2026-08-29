@@ -34,12 +34,11 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
     { id: 'analytics', label: 'Pipeline & Sales KPIs', icon: 'monitoring', href: '/admin/analytics' },
     {
       id: 'leads',
-      label: 'Leads',
+      label: 'Leads & Accounts',
       icon: 'group',
       badge: newLeadsCount > 0 ? `${newLeadsCount}` : undefined,
       href: '/admin/leads',
     },
-    { id: 'crm', label: 'CRM Contacts', icon: 'contacts_product', href: '/admin/leads' },
     {
       id: 'quotes',
       label: 'Quotes',
