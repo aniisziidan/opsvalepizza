@@ -146,47 +146,43 @@ export const CookieConsentBanner: React.FC = () => {
 
       {/* Granular Preferences Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] font-mono-data text-xs space-y-6 animate-in fade-in zoom-in-95 duration-150 text-[#041632]">
-            <div className="flex justify-between items-center border-b border-[#c5c6ce] pb-4">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-2xl text-[#e77114]">tune</span>
-                <h3 className="font-headline text-lg font-bold text-[#041632]">
-                  {t('legal.cookieSettings')}
-                </h3>
-              </div>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs font-mono-data text-xs">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-6">
+            <div className="flex justify-between items-center border-b border-[#c5c6ce] pb-3">
+              <h3 className="font-headline text-lg font-bold text-[#041632]">{t('consent.preferencesModalTitle')}</h3>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="text-gray-400 hover:text-gray-700 cursor-pointer p-1"
+                aria-label="Close modal"
               >
-                <span className="material-symbols-outlined">close</span>
+                <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
 
             <p className="font-body text-xs text-[#44474d] leading-relaxed">
-              {t('consent.bannerDesc')}
+              {t('consent.preferencesModalDesc')}
             </p>
 
-            <div className="space-y-4 divide-y divide-[#c5c6ce]/60">
-              {/* Necessary */}
-              <div className="pt-3 flex items-start justify-between gap-4">
+            <div className="space-y-4 divide-y divide-[#c5c6ce]/40">
+              {/* Essential */}
+              <div className="pt-2 flex items-start justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-[#041632]">{t('consent.categoryNecessary')}</span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      REQUIRED
+                    <span className="font-bold text-[#041632]">{t('consent.categoryEssential')}</span>
+                    <span className="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-bold uppercase">
+                      {t('consent.categoryRequired')}
                     </span>
                   </div>
                   <p className="font-body text-[11px] text-[#75777e]">
-                    {t('consent.categoryNecessaryDesc')}
+                    {t('consent.categoryEssentialDesc')}
                   </p>
                 </div>
                 <input
                   type="checkbox"
-                  checked={true}
-                  disabled={true}
-                  className="mt-1 w-4 h-4 rounded text-[#e77114] cursor-not-allowed opacity-60"
+                  disabled
+                  checked
+                  className="mt-1 w-4 h-4 rounded text-[#041632] opacity-60 cursor-not-allowed"
                 />
               </div>
 
@@ -239,27 +235,27 @@ export const CookieConsentBanner: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-[#c5c6ce]">
+            <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-4 border-t border-[#c5c6ce]">
               <button
                 type="button"
                 onClick={handleEssentialOnly}
-                className="px-4 py-2 border border-[#c5c6ce] hover:bg-gray-50 rounded-lg text-gray-700 font-semibold cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 border border-[#c5c6ce] hover:bg-gray-50 rounded-lg text-gray-700 font-semibold cursor-pointer text-center min-h-[44px]"
               >
                 {t('consent.essentialOnly')}
               </button>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={handleAcceptAll}
-                  className="px-4 py-2 bg-[#1b2b48] hover:bg-[#041632] text-white rounded-lg font-bold cursor-pointer transition-colors"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[#1b2b48] hover:bg-[#041632] text-white rounded-lg font-bold cursor-pointer transition-colors text-center min-h-[44px]"
                 >
                   {t('consent.acceptAll')}
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveCustomPreferences}
-                  className="px-5 py-2 bg-[#e77114] hover:bg-[#c25e10] text-white rounded-lg font-bold shadow-md cursor-pointer transition-colors"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#e77114] hover:bg-[#c25e10] text-white rounded-lg font-bold shadow-md cursor-pointer transition-colors text-center min-h-[44px]"
                 >
                   {t('consent.savePreferences')}
                 </button>

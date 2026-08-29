@@ -55,12 +55,10 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
 
   return (
     <I18nProvider initialLocale={locale}>
-      <div className="min-h-screen bg-[#eaeff7] flex flex-col items-center overflow-x-hidden">
-        <div className="w-full max-w-[1440px] min-h-screen flex flex-col justify-between bg-[#f8f9ff] shadow-[0_0_50px_rgba(4,22,50,0.06)] border-x border-[#c5c6ce]/60 relative">
-          <TopNavBar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </div>
+      <div className="min-h-screen bg-[#f8f9ff] flex flex-col justify-between relative">
+        <TopNavBar />
+        <main className="flex-1 w-full">{children}</main>
+        <Footer />
       </div>
       <CookieConsentBanner />
       <VisitorAnalyticsProvider />

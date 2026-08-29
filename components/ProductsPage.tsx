@@ -9,7 +9,7 @@ export const ProductsPage: React.FC = () => {
   const { t, locale } = useTranslation();
 
   return (
-    <div className="w-full py-12 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16">
+    <div className="w-full py-12 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-12 border-l-4 border-[#e77114] pl-6 py-2">
         <span className="font-mono-data text-xs text-[#735a31] uppercase tracking-widest block mb-1 font-semibold">
           {t('products.title')}
@@ -73,7 +73,7 @@ export const ProductsPage: React.FC = () => {
 
             <Link
               href={`/${locale}/quote`}
-              className="w-full bg-[#041632] text-white py-3 rounded-lg font-mono-data text-xs uppercase tracking-wider hover:bg-[#1b2b48] transition-colors cursor-pointer font-bold flex items-center justify-center gap-2"
+              className="w-full bg-[#041632] text-white py-3.5 px-4 rounded-lg font-mono-data text-xs uppercase tracking-wider hover:bg-[#1b2b48] transition-colors cursor-pointer font-bold flex items-center justify-center gap-2 min-h-[44px]"
             >
               {t('common.requestQuoteCta')}
               <span className="material-symbols-outlined text-sm">arrow_forward</span>

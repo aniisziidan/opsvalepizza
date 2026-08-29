@@ -140,7 +140,7 @@ export const VisitorsIntelligenceView: React.FC<VisitorsIntelligenceViewProps> =
   };
 
   return (
-    <div className="p-6 sm:p-10 max-w-7xl mx-auto w-full space-y-8 font-sans">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 space-y-8 font-sans">
       {/* 1. Header & Filter Bar */}
       <div className="bg-white border border-[#c5c6ce] rounded-xl p-6 shadow-2xs space-y-4">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -941,7 +941,7 @@ export const VisitorsIntelligenceView: React.FC<VisitorsIntelligenceViewProps> =
       {/* 10. Data Export Modal */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-4 font-mono-data text-xs">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-4 font-mono-data text-xs">
             <div className="flex justify-between items-center border-b border-[#c5c6ce] pb-3">
               <h3 className="font-headline text-lg font-bold text-[#041632]">Export Visitor Analytics</h3>
               <button

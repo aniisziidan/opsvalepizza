@@ -27,9 +27,9 @@ export const CalculatorPromoSection: React.FC = () => {
         }}
       />
 
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 relative z-10 items-center">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 relative z-10 items-center">
         {/* Calculator Promo Box */}
-        <div className="bg-[#1b2b48] p-8 sm:p-12 border border-[#4f5e7e] shadow-2xl relative rounded-sm">
+        <div className="bg-[#1b2b48] p-6 sm:p-10 md:p-12 border border-[#4f5e7e] shadow-2xl relative rounded-sm">
           <div className="absolute top-0 right-0 w-14 h-14 sm:w-16 sm:h-16 bg-[#e77114] flex items-center justify-center">
             <span className="material-symbols-outlined text-white text-2xl sm:text-3xl">calculate</span>
           </div>
@@ -62,7 +62,7 @@ export const CalculatorPromoSection: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full bg-[#e77114] text-white px-8 py-4 font-mono-data text-xs uppercase tracking-widest hover:bg-[#c25e10] transition-colors flex justify-center items-center gap-2 font-bold cursor-pointer shadow-lg rounded-sm"
+              className="w-full bg-[#e77114] text-white px-8 py-4 font-mono-data text-xs uppercase tracking-widest hover:bg-[#c25e10] transition-colors flex justify-center items-center gap-2 font-bold cursor-pointer shadow-lg rounded-sm min-h-[48px]"
             >
               {t('calculator.calculateBtn')}{' '}
               <span className="material-symbols-outlined text-[18px]">arrow_forward</span>

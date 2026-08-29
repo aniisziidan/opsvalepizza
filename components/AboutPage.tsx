@@ -7,7 +7,7 @@ export const AboutPage: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="w-full py-12 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16">
+    <div className="w-full py-12 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-12 border-l-4 border-[#e77114] pl-6 py-2">
         <span className="font-mono-data text-xs text-[#735a31] uppercase tracking-widest block mb-1 font-semibold">
           {t('about.title')}
@@ -41,7 +41,7 @@ export const AboutPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-[#1b2b48] text-white p-8 rounded-xl border border-[#4f5e7e] space-y-6">
+        <div className="bg-[#1b2b48] text-white p-6 sm:p-8 rounded-xl border border-[#4f5e7e] space-y-6">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-3xl text-[#e3c290]">verified</span>
             <h2 className="font-headline text-xl font-bold">{t('legal.foodContactEuClaim')}</h2>

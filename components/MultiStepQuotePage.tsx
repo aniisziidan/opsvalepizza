@@ -407,7 +407,7 @@ export const MultiStepQuotePage: React.FC<MultiStepQuotePageProps> = ({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto pt-8 sm:pt-16 pb-24 px-4 sm:px-8">
+    <div className="w-full max-w-4xl mx-auto pt-8 sm:pt-16 pb-24 px-4 sm:px-6 lg:px-8">
       {/* Stepper Header */}
       <div className="mb-10 sm:mb-12 flex justify-between items-center relative">
         <div className="absolute left-0 top-1/2 w-full h-px bg-[#c5c6ce] -z-10 transform -translate-y-1/2"></div>
@@ -1021,38 +1021,38 @@ export const MultiStepQuotePage: React.FC<MultiStepQuotePageProps> = ({
               </p>
 
               {/* Summary table */}
-              <div className="bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-6 space-y-3 font-mono-data text-xs">
-                <div className="flex justify-between border-b border-[#c5c6ce]/50 pb-2">
+              <div className="bg-[#f8f9ff] border border-[#c5c6ce] rounded-lg p-4 sm:p-6 space-y-3 font-mono-data text-xs">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 border-b border-[#c5c6ce]/50 pb-2">
                   <span className="text-[#44474d]">Company:</span>
                   <span className="font-bold text-[#041632]">
                     {companyName} ({branches} branches)
                   </span>
                 </div>
-                <div className="flex justify-between border-b border-[#c5c6ce]/50 pb-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 border-b border-[#c5c6ce]/50 pb-2">
                   <span className="text-[#44474d]">Primary Contact:</span>
                   <span className="font-bold text-[#041632]">
                     {fullName} ({workEmail})
                   </span>
                 </div>
-                <div className="flex justify-between border-b border-[#c5c6ce]/50 pb-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 border-b border-[#c5c6ce]/50 pb-2">
                   <span className="text-[#44474d]">Packaging Specs:</span>
-                  <span className="font-bold text-[#041632]">
+                  <span className="font-bold text-[#041632] break-words">
                     {specType === 'STANDARD' ? `${standardSize} Standard` : 'Custom Dimensions'} (
                     {lengthMm}×{widthMm}×{heightMm}mm) — {material.toUpperCase()} — {printType}
                   </span>
                 </div>
-                <div className="flex justify-between border-b border-[#c5c6ce]/50 pb-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 border-b border-[#c5c6ce]/50 pb-2">
                   <span className="text-[#44474d]">Monthly Volume:</span>
                   <span className="font-bold text-[#041632]">{monthlyVolume.toLocaleString()} units</span>
                 </div>
-                <div className="flex justify-between border-b border-[#c5c6ce]/50 pb-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 border-b border-[#c5c6ce]/50 pb-2">
                   <span className="text-[#44474d]">Delivery Destination:</span>
                   <span className="font-bold text-[#041632]">
                     {deliveryCity}, {deliveryCountry} ({deliveryFrequency})
                   </span>
                 </div>
                 {uploadedFiles.length > 0 && (
-                  <div className="flex justify-between">
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                     <span className="text-[#44474d]">Attached Files:</span>
                     <span className="font-bold text-[#041632]">{uploadedFiles.length} file(s) attached</span>
                   </div>

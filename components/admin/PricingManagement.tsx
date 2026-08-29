@@ -287,7 +287,7 @@ export const PricingManagement: React.FC<PricingManagementProps> = ({
   };
 
   return (
-    <div className="p-6 sm:p-8 md:p-10 space-y-8 max-w-[1440px] mx-auto bg-[#f8f9ff]">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 space-y-8 bg-[#f8f9ff]">
       {/* Hidden File Input for Excel */}
       <input
         type="file"
@@ -312,7 +312,7 @@ export const PricingManagement: React.FC<PricingManagementProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <a
             href="/api/admin/pricing/excel/export?type=current"
             download
@@ -481,7 +481,7 @@ export const PricingManagement: React.FC<PricingManagementProps> = ({
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 border-b border-[#c5c6ce] font-mono-data text-xs">
+      <div className="flex gap-2 border-b border-[#c5c6ce] font-mono-data text-xs overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab('landed')}
           className={`px-4 py-2.5 font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
@@ -1301,7 +1301,7 @@ export const PricingManagement: React.FC<PricingManagementProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-[#c5c6ce] bg-[#f8f9ff] flex justify-between items-center rounded-b-xl shrink-0">
+            <div className="p-4 sm:p-6 border-t border-[#c5c6ce] bg-[#f8f9ff] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rounded-b-xl shrink-0">
               <div className="font-mono-data text-xs text-[#75777e]">
                 {previewResult.canCommit ? (
                   <span className="text-emerald-700 font-bold flex items-center gap-1">
