@@ -17,6 +17,7 @@ coverage
 
 # Runtime/local-only data
 uploads
+backups
 playwright-report
 test-results
 scratch
