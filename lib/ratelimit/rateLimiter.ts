@@ -10,6 +10,7 @@ export const RATE_LIMIT_TIERS: Record<string, RateLimitConfig> = {
   FILE_UPLOAD: { maxRequests: 10, windowSeconds: 60 },
   QUOTE_REQUEST: { maxRequests: 5, windowSeconds: 600 },
   ADMIN_LOGIN: { maxRequests: 5, windowSeconds: 900 },
+  ADMIN_SEARCH: { maxRequests: 60, windowSeconds: 60 },
 };
 
 /**
@@ -38,8 +39,8 @@ export function getClientIp(req: Request | Headers): string {
 }
 
 /**
- * Checks and decrements rate limit for an identifier (e.g. `calculator:192.168.1.1`).
- * Uses a sliding-window algorithm that clears timestamps older than the window.
+ * Synchronous in-memory sliding-window algorithm.
+ * Clears timestamps older than the window windowSeconds.
  */
 export function checkRateLimit(
   identifier: string,
@@ -91,10 +92,96 @@ export function checkRateLimit(
 }
 
 /**
+ * Distributed rate limiting adapter supporting Upstash Redis REST or Redis protocol.
+ * Falls back safely to in-memory sliding window when Redis is unconfigured or unreachable.
+ */
+export async function checkRateLimitAsync(
+  identifier: string,
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (upstashUrl && upstashToken) {
+    try {
+      const now = Date.now();
+      const windowMs = config.windowSeconds * 1000;
+      const windowStart = now - windowMs;
+      const key = `ratelimit:${identifier}`;
+
+      // Upstash REST pipeline: ZREMRANGEBYSCORE, ZADD, ZCARD, EXPIRE
+      const pipelineRes = await fetch(`${upstashUrl}/pipeline`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${upstashToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([
+          ['ZREMRANGEBYSCORE', key, 0, windowStart],
+          ['ZADD', key, now, `${now}-${Math.random()}`],
+          ['ZCARD', key],
+          ['EXPIRE', key, config.windowSeconds + 60],
+        ]),
+      });
+
+      if (pipelineRes.ok) {
+        const results = await pipelineRes.json();
+        const currentCount = typeof results[2]?.result === 'number' ? results[2].result : 1;
+
+        if (currentCount > config.maxRequests) {
+          const resetTimeMs = now + windowMs;
+          const retryAfterSeconds = Math.max(1, config.windowSeconds);
+          return {
+            success: false,
+            limit: config.maxRequests,
+            remaining: 0,
+            resetTimeMs,
+            retryAfterSeconds,
+          };
+        }
+
+        return {
+          success: true,
+          limit: config.maxRequests,
+          remaining: Math.max(0, config.maxRequests - currentCount),
+          resetTimeMs: now + windowMs,
+          retryAfterSeconds: 0,
+        };
+      }
+    } catch {
+      // Fallback silently to memory
+    }
+  }
+
+  return checkRateLimit(identifier, config);
+}
+
+/**
  * Resets rate limit for an identifier (useful for tests or successful authentication).
  */
 export function resetRateLimit(identifier: string): void {
   rateLimitStore.delete(identifier);
+}
+
+/**
+ * Async reset supporting distributed stores.
+ */
+export async function resetRateLimitAsync(identifier: string): Promise<void> {
+  rateLimitStore.delete(identifier);
+
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (upstashUrl && upstashToken) {
+    try {
+      await fetch(`${upstashUrl}/del/ratelimit:${encodeURIComponent(identifier)}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${upstashToken}` },
+      });
+    } catch {
+      // ignore
+    }
+  }
 }
 
 /**

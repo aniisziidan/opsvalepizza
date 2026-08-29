@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
+import { AdminCommandPalette } from '@/components/admin/AdminCommandPalette';
+import { AdminToastContainer } from '@/components/admin/AdminToastContainer';
 
 interface AdminChromeProps {
   children: React.ReactNode;
@@ -98,9 +100,9 @@ export const AdminChrome: React.FC<AdminChromeProps> = ({
           <div className="w-10 h-10 rounded-full bg-[#e3c290] text-[#041632] font-headline font-bold flex items-center justify-center text-sm shadow-inner flex-shrink-0">
             {initials}
           </div>
-          <div className="overflow-hidden">
-            <h4 className="font-body text-sm font-semibold text-white truncate">{userName}</h4>
-            <p className="font-mono-data text-[11px] text-[#8393b5] truncate">{userEmail}</p>
+          <div className="min-w-0">
+            <span className="font-headline font-bold text-sm text-white block truncate">{userName}</span>
+            <span className="font-mono-data text-[11px] text-[#8393b5] block truncate">{userEmail}</span>
           </div>
         </div>
 
@@ -117,28 +119,32 @@ export const AdminChrome: React.FC<AdminChromeProps> = ({
         </div>
 
         {/* Navigation Items */}
-        <nav className="px-3 space-y-1 font-mono-data text-xs">
+        <nav className="px-3 space-y-1">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/admin/dashboard' && pathname.startsWith(item.href));
             return (
               <Link
                 key={item.id}
                 href={item.href}
                 onClick={() => setMobileDrawerOpen(false)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer text-left min-h-[40px] ${
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg font-mono-data text-xs transition-all duration-150 cursor-pointer min-h-[40px] ${
                   isActive
-                    ? 'bg-[#1b2b48] text-white font-bold border-l-4 border-[#e77114]'
-                    : 'text-[#8393b5] hover:bg-[#1b2b48]/60 hover:text-white'
+                    ? 'bg-[#e77114] text-white font-bold shadow-sm'
+                    : 'text-[#8393b5] hover:bg-[#1b2b48] hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className={`material-symbols-outlined text-lg ${isActive ? 'text-[#e3c290]' : 'text-[#8393b5]'}`}>
-                    {item.icon}
-                  </span>
+                  <span className="material-symbols-outlined text-xl">{item.icon}</span>
                   <span>{item.label}</span>
                 </div>
                 {item.badge && (
-                  <span className="bg-[#e77114] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      isActive ? 'bg-white text-[#e77114]' : 'bg-[#e77114] text-white'
+                    }`}
+                  >
                     {item.badge}
                   </span>
                 )}
@@ -174,6 +180,9 @@ export const AdminChrome: React.FC<AdminChromeProps> = ({
 
   return (
     <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-row w-full selection:bg-[#ffdeac] selection:text-[#281900]">
+      {/* Real-time Toast Notifications Stream */}
+      <AdminToastContainer />
+
       {/* Desktop Persistent Sidebar (>= lg) */}
       <aside className="hidden lg:flex w-64 bg-[#041632] text-white flex-shrink-0 border-r border-[#1b2b48] flex-col justify-between h-screen sticky top-0 z-40 overflow-y-auto">
         {renderNavContent()}
@@ -199,8 +208,8 @@ export const AdminChrome: React.FC<AdminChromeProps> = ({
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Top Header Bar */}
         <header className="flex items-center justify-between gap-4 px-4 sm:px-6 py-2.5 border-b border-[#e2e4ef] bg-white shadow-2xs sticky top-0 z-30">
-          {/* Left: Mobile Menu Hamburger Button */}
-          <div className="flex items-center gap-3">
+          {/* Left: Mobile Menu Hamburger & Quick Search Trigger */}
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               type="button"
               onClick={() => setMobileDrawerOpen(true)}
@@ -213,6 +222,9 @@ export const AdminChrome: React.FC<AdminChromeProps> = ({
             <span className="font-mono-data text-xs text-[#041632] font-bold hidden sm:inline-block">
               OpsVale Executive Portal
             </span>
+
+            {/* Command Palette Trigger */}
+            <AdminCommandPalette />
           </div>
 
           {/* Right: Notifications, User Email & Sign Out */}

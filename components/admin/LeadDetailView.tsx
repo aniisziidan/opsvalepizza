@@ -7,6 +7,7 @@ import { LEAD_STATUS_LABEL, LEAD_STATUS_STYLE, LeadStatus } from '@/lib/types';
 import { updateLeadStatus, addLeadNote, sendDirectLeadEmail } from '@/app/admin/leads/actions';
 import { createQuote, dispatchQuote, getProposalShareUrl } from '@/app/admin/leads/[id]/quote-actions';
 import { timeAgo, formatDateTime, formatCurrency, formatNumber } from '@/lib/admin/formatters';
+import { MarginHelperTooltip } from '@/components/admin/MarginHelperTooltip';
 
 interface LeadDetailViewProps {
   lead: LeadDetailData;
@@ -655,34 +656,20 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({ lead, pricingGui
                 />
               </div>
 
-              {pricingGuidance?.available && (
-                <div className="rounded-lg border border-[#c5c6ce] bg-[#f8f9ff] p-4 text-xs space-y-1">
-                  <p className="font-semibold text-[#041632] uppercase tracking-wider">Pricing guidance</p>
-                  {pricingGuidance.compact.map((l) => (
-                    <div key={l.label} className="flex justify-between">
-                      <span className="text-[#4f5e7e]">{l.label}</span>
-                      <span className="font-bold text-[#041632]">€{l.valueEur.toFixed(4)}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between border-t border-[#c5c6ce]/50 pt-1">
-                    <span className="text-[#4f5e7e]">Markup</span>
-                    <span className="font-bold text-[#041632]">
-                      {pricingGuidance.markupMinPct}%–{pricingGuidance.markupMaxPct}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#4f5e7e]">Suggested unit price</span>
-                    <span className="font-bold text-[#e77114]">
-                      €{pricingGuidance.suggestedMinEur.toFixed(4)}–€{pricingGuidance.suggestedMaxEur.toFixed(4)}
-                    </span>
-                  </div>
-                  {pricingGuidance.noLogisticsConfigured && (
-                    <p className="text-[#b3261e]">
-                      No logistics corridor configured for {pricingGuidance.countryName} — freight €0 applied.
-                    </p>
-                  )}
-                </div>
-              )}
+              {/* Interactive Gross Margin Meter & Governance Tooltip */}
+              <MarginHelperTooltip
+                unitPriceEur={quotePrice}
+                landedCostEur={
+                  pricingGuidance?.compact?.find(
+                    (c) => c.label.toLowerCase().includes('landed') || c.label.toLowerCase().includes('base')
+                  )?.valueEur || pricingGuidance?.compact?.[0]?.valueEur
+                }
+                suggestedMinEur={pricingGuidance?.suggestedMinEur}
+                suggestedMaxEur={pricingGuidance?.suggestedMaxEur}
+                markupMinPct={pricingGuidance?.markupMinPct}
+                markupMaxPct={pricingGuidance?.markupMaxPct}
+                countryName={pricingGuidance?.countryName}
+              />
 
               <button
                 type="submit"

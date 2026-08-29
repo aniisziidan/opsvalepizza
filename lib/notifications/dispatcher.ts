@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { NotificationEvent } from './events';
+import { NotificationEvent, emitAdminNotification } from './events';
 import { sendWebPushNotification } from './webPush';
 import { emailSender, DEFAULT_FROM_EMAIL } from '@/lib/email/transporter';
 import { NotificationPriority } from '@prisma/client';
@@ -148,6 +148,20 @@ export async function emitNotificationEvent(event: NotificationEvent) {
           console.error(`Failed to dispatch notification email to user ${userId}:`, err);
         });
       }
+    }
+
+    // D. Real-Time Broadcast across active SSE client streams
+    try {
+      emitAdminNotification({
+        type: event.type,
+        title: event.title,
+        message: event.message,
+        href: event.actionUrl,
+        leadCode: event.metadata?.leadCode,
+        companyName: event.metadata?.companyName,
+      });
+    } catch {
+      // ignore
     }
 
     return createdNotifications;

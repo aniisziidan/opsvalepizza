@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { checkRateLimit, resetRateLimit, createRateLimitResponse, getClientIp } from '../rateLimiter';
+import { checkRateLimit, checkRateLimitAsync, resetRateLimit, createRateLimitResponse, getClientIp } from '../rateLimiter';
 
 describe('Rate Limiter Engine', () => {
   beforeEach(() => {
@@ -75,6 +75,22 @@ describe('Rate Limiter Engine', () => {
         headers: { 'x-forwarded-for': '203.0.113.7' },
       });
       expect(getClientIp(req)).toBe('203.0.113.7');
+    });
+  });
+
+  describe('checkRateLimitAsync', () => {
+    it('seamlessly falls back to in-memory sliding window when Upstash is not configured', async () => {
+      const config = { maxRequests: 2, windowSeconds: 10 };
+      const r1 = await checkRateLimitAsync('test-async-1', config);
+      expect(r1.success).toBe(true);
+      expect(r1.remaining).toBe(1);
+
+      const r2 = await checkRateLimitAsync('test-async-1', config);
+      expect(r2.success).toBe(true);
+      expect(r2.remaining).toBe(0);
+
+      const r3 = await checkRateLimitAsync('test-async-1', config);
+      expect(r3.success).toBe(false);
     });
   });
 });

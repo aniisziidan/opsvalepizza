@@ -68,4 +68,14 @@ describe('Storage Adapter & Configuration Validation', () => {
       process.env = originalEnv;
     }
   });
+
+  it('generates and saves offsite database backup snapshot successfully', async () => {
+    const { performOffsiteDatabaseBackup } = await import('../offsiteBackup');
+    const dummyDump = Buffer.from('CREATE TABLE test (id INT); INSERT INTO test VALUES (1);');
+    const result = await performOffsiteDatabaseBackup(dummyDump, 'test-db-dump.sql.gz');
+
+    expect(result.success).toBe(true);
+    expect(result.backupKey).toContain('test-db-dump.sql.gz');
+    expect(result.sizeBytes).toBeGreaterThan(0);
+  });
 });
