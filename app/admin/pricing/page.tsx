@@ -6,6 +6,7 @@ import {
   getPricingAuditLogs,
   getCountries,
   getBoxConfigs,
+  getActiveCorridorCandidates,
 } from '@/lib/admin/queries';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,7 @@ export default async function AdminPricingPage() {
     auditLogs,
     countries,
     boxConfigs,
+    corridorCandidates,
   ] = await Promise.all([
     getLandedCosts(),
     getPricingRules(),
@@ -25,6 +27,7 @@ export default async function AdminPricingPage() {
     getPricingAuditLogs(),
     getCountries(),
     getBoxConfigs(),
+    getActiveCorridorCandidates(),
   ]);
 
   return (
@@ -35,6 +38,7 @@ export default async function AdminPricingPage() {
       auditLogs={auditLogs}
       countries={countries}
       boxConfigs={boxConfigs}
+      corridorCandidates={corridorCandidates}
     />
   );
 }
