@@ -94,6 +94,10 @@ passes. A 2026-08-29 hardening pass addressed the audit findings across P1–P3 
 backups, server-side analytics consent, wired GDPR retention purge, nonce-based CSP on dynamic routes,
 a unified TRUST_PROXY-aware rate limiter, fail-closed cron auth, opt-in Caddy TLS, a sitemap, session
 re-validation of admin `active`/role (not just token presence), a localized-canonical robots allow-list,
-and locale-aware (font-safe) proposal-PDF number/date formatting. For a full, evidence-based status —
-including the remediation log (§0) and remaining gaps — see
+and locale-aware (font-safe) proposal-PDF number/date formatting. A follow-up feature (2026-08-29) wires
+**logistics into landed cost** — effective landed = product cost + the country's active-corridor
+freight/inland/other, marked up on the sum, with one-active-corridor-per-country enforced by a DB partial
+unique index, immutable pricing snapshots, admin composition views, and audited corridor edits. Both the
+hardening pass and this feature are **merged to `main` and deployed to production**. For a full,
+evidence-based status — including the remediation log (§0) and remaining gaps — see
 [`COMPLETE_PROJECT_AUDIT.md`](./COMPLETE_PROJECT_AUDIT.md).
