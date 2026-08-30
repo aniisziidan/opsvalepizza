@@ -82,7 +82,7 @@ export const Footer: React.FC = () => {
             <span className="text-xs text-[#e3c290] uppercase tracking-widest block mb-4 font-semibold font-mono-data">
               Legal &amp; Compliance Desk
             </span>
-            <ul className="space-y-1 text-xs text-[#8393b5] mb-6">
+            <ul className="space-y-1 text-xs text-[#8393b5]">
               <li>
                 <Link
                   href={`/${locale}/imprint`}
@@ -116,13 +116,6 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
             </ul>
-
-            {/* Platform & Logistics Operational Node Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#0b1c36] border border-[#1b2b48] text-[11px] text-[#8393b5] font-mono-data">
-              <span className="material-symbols-outlined text-[14px] text-[#e3c290]">hub</span>
-              <span>Network Node:</span>
-              <span className="text-[#e3c290] font-semibold tracking-wide">OPS-VALE-EUR-01</span>
-            </div>
           </div>
         </div>
 
