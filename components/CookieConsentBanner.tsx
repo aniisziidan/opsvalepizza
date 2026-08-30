@@ -149,7 +149,7 @@ export const CookieConsentBanner: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs font-mono-data text-xs">
           <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-[#c5c6ce] space-y-6">
             <div className="flex justify-between items-center border-b border-[#c5c6ce] pb-3">
-              <h3 className="font-headline text-lg font-bold text-[#041632]">{t('consent.preferencesModalTitle')}</h3>
+              <h3 className="font-headline text-lg font-bold text-[#041632]">{t('consent.bannerTitle')}</h3>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
@@ -161,7 +161,7 @@ export const CookieConsentBanner: React.FC = () => {
             </div>
 
             <p className="font-body text-xs text-[#44474d] leading-relaxed">
-              {t('consent.preferencesModalDesc')}
+              {t('consent.bannerDesc')}
             </p>
 
             <div className="space-y-4 divide-y divide-[#c5c6ce]/40">
@@ -169,13 +169,13 @@ export const CookieConsentBanner: React.FC = () => {
               <div className="pt-2 flex items-start justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-[#041632]">{t('consent.categoryEssential')}</span>
+                    <span className="font-bold text-[#041632]">{t('consent.categoryNecessary')}</span>
                     <span className="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-bold uppercase">
-                      {t('consent.categoryRequired')}
+                      Required
                     </span>
                   </div>
                   <p className="font-body text-[11px] text-[#75777e]">
-                    {t('consent.categoryEssentialDesc')}
+                    {t('consent.categoryNecessaryDesc')}
                   </p>
                 </div>
                 <input
