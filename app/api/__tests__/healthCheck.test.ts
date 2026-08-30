@@ -1,5 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { GET } from '../health/route';
+
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    $queryRaw: vi.fn().mockResolvedValue([{ 1: 1 }]),
+  },
+}));
+
+vi.mock('@/lib/notifications/dispatcher', () => ({
+  emitNotificationEvent: vi.fn().mockResolvedValue([]),
+}));
 
 describe('/api/health Route', () => {
   it('returns valid health probe JSON with status and system checks', async () => {
@@ -16,3 +26,4 @@ describe('/api/health Route', () => {
     expect(data.system).toHaveProperty('uptimeSeconds');
   });
 });
+
