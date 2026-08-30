@@ -20,6 +20,8 @@ type CalculatorApiResult =
         perBoxMax: number;
         pctMin: number;
         pctMax: number;
+        monthlyMin: number;
+        monthlyMax: number;
         yearlyMin: number;
         yearlyMax: number;
         annualVolume: number;
@@ -599,6 +601,14 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                             <div className="flex justify-between py-1 border-b border-white/10">
                               <span>{t('calculator.monthlyVolumeLabel')}:</span>
                               <span className="font-semibold text-white">{monthlyVolume.toLocaleString('en-EU')}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-white/10">
+                              <span>{t('calculator.monthlySavingsTitle')}:</span>
+                              <span className="font-semibold text-[#e3c290]">
+                                {available
+                                  ? `€${formatCurrency(result.savings.monthlyMin ?? result.savings.yearlyMin / 12)} – €${formatCurrency(result.savings.monthlyMax ?? result.savings.yearlyMax / 12)}`
+                                  : '--'}
+                              </span>
                             </div>
                             <div className="flex justify-between py-1">
                               <span>{t('calculator.annualSavingsTitle')}:</span>

@@ -7,6 +7,11 @@ describe('computeSavings', () => {
     expect(r.savingsPerBoxMax).toBeCloseTo(0.14, 4); expect(r.savingsPerBoxMin).toBeCloseTo(0.09, 4);
   });
   it('annual volume is monthly × 12', () => { expect(computeSavings(input).annualVolume).toBe(240000); });
+  it('monthly savings = perBox × monthly', () => {
+    const r = computeSavings(input);
+    expect(r.monthlySavingsMax).toBeCloseTo(0.14 * 20000, 2);
+    expect(r.monthlySavingsMin).toBeCloseTo(0.09 * 20000, 2);
+  });
   it('yearly savings = perBox × monthly × 12', () => {
     const r = computeSavings(input);
     expect(r.yearlySavingsMax).toBeCloseTo(0.14 * 240000, 2); expect(r.yearlySavingsMin).toBeCloseTo(0.09 * 240000, 2);
