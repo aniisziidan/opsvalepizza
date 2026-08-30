@@ -14,10 +14,13 @@ const range: PublicRangeResult = {
 };
 const savings: SavingsResult = {
   annualVolume: 720000,
+  monthlyVolume: 60000,
   savingsPerBoxMin: 0.048766,
   savingsPerBoxMax: 0.093211,
   savingsPctMin: 13.933142,
   savingsPctMax: 26.631714,
+  monthlySavingsMin: 2925.96,
+  monthlySavingsMax: 5592.66,
   yearlySavingsMin: 35111.52,
   yearlySavingsMax: 67111.92,
 };
@@ -43,6 +46,8 @@ describe('buildCalculatorResponse', () => {
     expect(result.savings.perBoxMax).toBe(0.0932);
     expect(result.savings.pctMin).toBe(13.9);
     expect(result.savings.pctMax).toBe(26.6);
+    expect(result.savings.monthlyMin).toBe(2925.96);
+    expect(result.savings.monthlyMax).toBe(5592.66);
     expect(result.savings.yearlyMin).toBe(35111.52);
     expect(result.savings.yearlyMax).toBe(67111.92);
     expect(result.savings.annualVolume).toBe(720000);

@@ -13,6 +13,8 @@ export interface CalculatorResponse {
     perBoxMax: number;
     pctMin: number;
     pctMax: number;
+    monthlyMin: number;
+    monthlyMax: number;
     yearlyMin: number;
     yearlyMax: number;
     annualVolume: number;
@@ -36,6 +38,8 @@ export function buildCalculatorResponse(
       perBoxMax: round4(savings.savingsPerBoxMax),
       pctMin: round1(savings.savingsPctMin),
       pctMax: round1(savings.savingsPctMax),
+      monthlyMin: round2(savings.monthlySavingsMin),
+      monthlyMax: round2(savings.monthlySavingsMax),
       yearlyMin: round2(savings.yearlySavingsMin),
       yearlyMax: round2(savings.yearlySavingsMax),
       annualVolume: savings.annualVolume,
