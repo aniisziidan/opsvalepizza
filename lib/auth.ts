@@ -4,6 +4,12 @@ import bcrypt from 'bcryptjs';
 import { authConfig } from '@/auth.config';
 import { prisma } from './db';
 import { needsRevalidation } from './auth/sessionRevalidation';
+import {
+  getClientIp,
+  checkRateLimit,
+  resetRateLimit,
+  RATE_LIMIT_TIERS,
+} from './ratelimit/rateLimiter';
 
 export const hashPassword = (pw: string) => bcrypt.hash(pw, 12);
 export const verifyPassword = (pw: string, hash: string) =>
@@ -19,7 +25,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },
-      async authorize(c) {
+      async authorize(c, request) {
+        // Brute-force protection: throttle credential attempts per client IP.
+        // The credentials callback (`/api/auth/callback/credentials`) is the
+        // only path that reaches password verification and is not covered by
+        // the route middleware, so the limit is enforced here. Fails closed —
+        // once the window is exhausted, further attempts are rejected without
+        // touching bcrypt or the database.
+        const ip = getClientIp(request as Request);
+        const rateKey = `login:${ip}`;
+        const rate = checkRateLimit(rateKey, RATE_LIMIT_TIERS.ADMIN_LOGIN);
+        if (!rate.success) {
+          return null;
+        }
+
         const user = await prisma.adminUser.findUnique({
           where: { email: String(c?.email) },
         });
@@ -31,6 +50,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
         if (!(await verifyPassword(String(c?.password), user.passwordHash)))
           return null;
+
+        // Successful sign-in: clear the attempt counter so a legitimate admin
+        // who mistyped a few times isn't left throttled.
+        resetRateLimit(rateKey);
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       },
     }),

@@ -16,23 +16,42 @@ export const RATE_LIMIT_TIERS: Record<string, RateLimitConfig> = {
 /**
  * Extracts the client IP safely from request headers.
  *
- * Forwarded headers (`x-forwarded-for` / `x-real-ip`) are attacker-controllable and are only
- * honored when `TRUST_PROXY=true` — i.e. when the app genuinely sits behind a reverse proxy that
- * sets them. Without that flag the headers are ignored so a client cannot spoof its identity to
- * evade rate limiting. Falls back to '127.0.0.1'.
+ * Forwarded headers are only honored when `TRUST_PROXY=true` — i.e. when the app genuinely sits
+ * behind a reverse proxy. Without that flag they are ignored so a client cannot spoof its identity
+ * to evade rate limiting.
+ *
+ * Header precedence matters for correctness: the left-most `X-Forwarded-For` entry is set by the
+ * *client* (nginx appends via `$proxy_add_x_forwarded_for`) and is therefore attacker-spoofable,
+ * which would let an attacker mint an unlimited number of rate-limit buckets. We instead prefer
+ * headers written by the trusted edge/proxy itself:
+ *   1. `cf-connecting-ip`  — set by Cloudflare, overwrites any client-supplied value.
+ *   2. `x-real-ip`         — set by nginx to the real peer address.
+ *   3. `x-forwarded-for`   — last resort; we take the *right-most* entry, which is the hop the
+ *                            trusted proxy observed, not the client-controlled left-most value.
+ * Falls back to '127.0.0.1'.
  */
-export function getClientIp(req: Request | Headers): string {
+export function getClientIp(req: Request | Headers | undefined | null): string {
   const headers = req instanceof Request ? req.headers : req;
+  // Defensive: some callers (e.g. an auth callback without a request context)
+  // may pass nothing. Never throw from IP resolution.
+  if (!headers || typeof headers.get !== 'function') {
+    return '127.0.0.1';
+  }
   const trustProxy = process.env.TRUST_PROXY === 'true';
 
   if (trustProxy) {
+    const cfIp = headers.get('cf-connecting-ip');
+    if (cfIp && cfIp.trim()) return cfIp.trim();
+
+    const realIp = headers.get('x-real-ip');
+    if (realIp && realIp.trim()) return realIp.trim();
+
     const forwarded = headers.get('x-forwarded-for');
     if (forwarded) {
-      const firstIp = forwarded.split(',')[0].trim();
-      if (firstIp) return firstIp;
+      const parts = forwarded.split(',').map((p) => p.trim()).filter(Boolean);
+      const rightMost = parts[parts.length - 1];
+      if (rightMost) return rightMost;
     }
-    const realIp = headers.get('x-real-ip');
-    if (realIp) return realIp.trim();
   }
 
   return '127.0.0.1';

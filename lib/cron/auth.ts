@@ -1,6 +1,18 @@
+import crypto from 'node:crypto';
+
 export interface CronAuthResult {
   authorized: boolean;
   reason?: string;
+}
+
+/** Length-safe, constant-time string comparison to avoid leaking the secret via timing. */
+function constantTimeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(ab, bb);
 }
 
 /**
@@ -25,7 +37,7 @@ export function isCronAuthorized(
   }
 
   const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
-  if (token && token === trimmedSecret) {
+  if (token && constantTimeEqual(token, trimmedSecret)) {
     return { authorized: true };
   }
 

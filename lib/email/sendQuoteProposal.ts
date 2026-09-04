@@ -13,12 +13,25 @@ export interface QuoteProposalEmailInput {
   specsNotes?: string | null;
 }
 
+import { escapeHtml } from './escapeHtml';
+
 export function buildQuoteProposalEmail(data: QuoteProposalEmailInput): {
   subject: string;
   text: string;
   html: string;
 } {
   const subject = `[OpsVale Commercial Proposal] ${data.leadCode} (Rev ${data.revision}) — ${data.companyName}`;
+
+  // Escape values that originate from (or derive from) customer-supplied input
+  // before interpolating them into the HTML body.
+  const safe = {
+    leadCode: escapeHtml(data.leadCode),
+    companyName: escapeHtml(data.companyName),
+    contactName: escapeHtml(data.contactName),
+    boxSpec: escapeHtml(data.boxSpec),
+    specsNotes: escapeHtml(data.specsNotes),
+    proposalUrl: escapeHtml(data.proposalUrl),
+  };
 
   const text = `
 Dear ${data.contactName},
@@ -56,23 +69,23 @@ https://opsvale.com
     </span>
     <h2 style="margin: 0; font-size: 22px; font-weight: bold;">OpsVale Packaging Proposal</h2>
     <p style="margin: 6px 0 0 0; font-family: monospace; font-size: 13px; color: #8393b5;">
-      Reference: <strong style="color: #ffffff;">${data.leadCode}</strong> • Revision ${data.revision}
+      Reference: <strong style="color: #ffffff;">${safe.leadCode}</strong> • Revision ${data.revision}
     </p>
   </div>
 
   <div style="background-color: #ffffff; padding: 28px; border: 1px solid #c5c6ce; border-top: none; border-radius: 0 0 8px 8px;">
     <p style="margin-top: 0; font-size: 15px;">
-      Dear <strong>${data.contactName}</strong>,
+      Dear <strong>${safe.contactName}</strong>,
     </p>
     <p style="font-size: 14px; color: #44474d;">
-      We have finalized the factory-direct pricing for <strong>${data.companyName}</strong> based on your requested specifications.
+      We have finalized the factory-direct pricing for <strong>${safe.companyName}</strong> based on your requested specifications.
     </p>
 
     <div style="background-color: #f8f9ff; border: 1px solid #c5c6ce; border-radius: 8px; padding: 18px; margin: 20px 0;">
       <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
         <tr style="border-bottom: 1px solid #e2e4ef;">
           <td style="padding: 8px 0; color: #75777e;">Packaging SKU:</td>
-          <td style="padding: 8px 0; font-weight: bold; color: #041632; text-align: right;">${data.boxSpec}</td>
+          <td style="padding: 8px 0; font-weight: bold; color: #041632; text-align: right;">${safe.boxSpec}</td>
         </tr>
         <tr style="border-bottom: 1px solid #e2e4ef;">
           <td style="padding: 8px 0; color: #75777e;">Order Batch Volume:</td>
@@ -102,27 +115,27 @@ https://opsvale.com
     ${
       data.specsNotes
         ? `<div style="background-color: #eff4ff; border-left: 4px solid #041632; padding: 12px 16px; border-radius: 4px; margin-bottom: 24px; font-size: 13px; color: #041632;">
-            <strong>Specification Notes:</strong> ${data.specsNotes}
+            <strong>Specification Notes:</strong> ${safe.specsNotes}
           </div>`
         : ''
     }
 
     <div style="text-align: center; margin: 30px 0 20px 0;">
-      <a href="${data.proposalUrl}" style="background-color: #e77114; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; letter-spacing: 0.5px; box-shadow: 0 4px 6px -1px rgba(231, 113, 20, 0.2);">
+      <a href="${safe.proposalUrl}" style="background-color: #e77114; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; letter-spacing: 0.5px; box-shadow: 0 4px 6px -1px rgba(231, 113, 20, 0.2);">
         Review &amp; Accept Proposal &rarr;
       </a>
     </div>
 
     <p style="font-size: 11px; color: #75777e; text-align: center; margin-top: 16px;">
       Direct Portal Link: <br />
-      <a href="${data.proposalUrl}" style="color: #e77114; word-break: break-all;">${data.proposalUrl}</a>
+      <a href="${safe.proposalUrl}" style="color: #e77114; word-break: break-all;">${safe.proposalUrl}</a>
     </p>
 
     <hr style="border: none; border-top: 1px solid #e2e4ef; margin: 24px 0;" />
 
     <p style="font-size: 11px; color: #8393b5; margin-bottom: 0;">
       OpsVale European Distribution B.V. • Central Dispatch Hub • Rotterdam, Netherlands<br />
-      This communication contains confidential commercial terms intended solely for ${data.companyName}.
+      This communication contains confidential commercial terms intended solely for ${safe.companyName}.
     </p>
   </div>
 </div>

@@ -50,18 +50,34 @@ describe('Rate Limiter Engine', () => {
 
     it('ignores forwarded headers when TRUST_PROXY is not enabled (unspoofable)', () => {
       delete process.env.TRUST_PROXY;
-      const headers = new Headers({ 'x-forwarded-for': '203.0.113.195, 70.41.3.18' });
+      const headers = new Headers({
+        'x-forwarded-for': '203.0.113.195, 70.41.3.18',
+        'cf-connecting-ip': '203.0.113.195',
+      });
       expect(getClientIp(headers)).toBe('127.0.0.1');
     });
 
-    it('trusts x-forwarded-for / x-real-ip only when TRUST_PROXY=true', () => {
+    it('prefers the Cloudflare-set cf-connecting-ip over spoofable forwarded headers', () => {
+      process.env.TRUST_PROXY = 'true';
+      // Attacker spoofs a left-most XFF entry; the trusted edge header must win.
+      const headers = new Headers({
+        'x-forwarded-for': '1.2.3.4, 198.51.100.22',
+        'x-real-ip': '198.51.100.22',
+        'cf-connecting-ip': '203.0.113.9',
+      });
+      expect(getClientIp(headers)).toBe('203.0.113.9');
+    });
+
+    it('falls back to x-real-ip, then the right-most XFF hop (not the client-set left-most)', () => {
       process.env.TRUST_PROXY = 'true';
 
-      const headers1 = new Headers({ 'x-forwarded-for': '203.0.113.195, 70.41.3.18' });
-      expect(getClientIp(headers1)).toBe('203.0.113.195');
+      const realIpOnly = new Headers({ 'x-real-ip': '198.51.100.22' });
+      expect(getClientIp(realIpOnly)).toBe('198.51.100.22');
 
-      const headers2 = new Headers({ 'x-real-ip': '198.51.100.22' });
-      expect(getClientIp(headers2)).toBe('198.51.100.22');
+      // Only XFF present: an attacker controls the left-most entry, so we take
+      // the right-most (the hop the trusted proxy actually observed).
+      const xffOnly = new Headers({ 'x-forwarded-for': '203.0.113.195, 70.41.3.18' });
+      expect(getClientIp(xffOnly)).toBe('70.41.3.18');
     });
 
     it('falls back to 127.0.0.1 when trusting a proxy but no forwarded headers present', () => {
@@ -72,7 +88,7 @@ describe('Rate Limiter Engine', () => {
     it('accepts a Request as well as a Headers object', () => {
       process.env.TRUST_PROXY = 'true';
       const req = new Request('http://localhost', {
-        headers: { 'x-forwarded-for': '203.0.113.7' },
+        headers: { 'cf-connecting-ip': '203.0.113.7' },
       });
       expect(getClientIp(req)).toBe('203.0.113.7');
     });

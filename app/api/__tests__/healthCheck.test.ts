@@ -12,8 +12,8 @@ vi.mock('@/lib/notifications/dispatcher', () => ({
 }));
 
 describe('/api/health Route', () => {
-  it('returns valid health probe JSON with status and system checks', async () => {
-    const res = await GET();
+  it('returns valid health probe JSON with status and checks', async () => {
+    const res = await GET(new Request('http://localhost/api/health'));
     expect(res).toBeDefined();
 
     const data = await res.json();
@@ -23,7 +23,14 @@ describe('/api/health Route', () => {
     expect(data).toHaveProperty('version');
     expect(data.checks).toHaveProperty('database');
     expect(data.checks).toHaveProperty('storage');
-    expect(data.system).toHaveProperty('uptimeSeconds');
+  });
+
+  it('does not leak runtime/system internals on the public endpoint', async () => {
+    const res = await GET(new Request('http://localhost/api/health'));
+    const data = await res.json();
+    expect(data).not.toHaveProperty('system');
+    expect(JSON.stringify(data)).not.toContain('nodeVersion');
+    expect(JSON.stringify(data)).not.toMatch(/memory/i);
   });
 });
 
