@@ -518,6 +518,7 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
                   <th className="text-left px-4 py-3">Country</th>
                   <th className="text-left px-4 py-3">Box</th>
                   <th className="text-right px-4 py-3">€/box</th>
+                  <th className="text-left px-4 py-3">Created At</th>
                   <th className="text-left px-4 py-3">Updated</th>
                   <th className="text-right px-6 py-3">Actions</th>
                 </tr>
@@ -532,6 +533,9 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
                     <td className="px-4 py-3">{c.boxLabel}</td>
                     <td className="px-4 py-3 text-right font-bold text-[#e77114]">
                       {rangeStr(Number(c.perBoxMinEur), Number(c.perBoxMaxEur), eur4)}
+                    </td>
+                    <td className="px-4 py-3 text-[#75777e]">
+                      {new Date(c.createdAt).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-[#75777e]">
                       {new Date(c.effectiveFrom).toLocaleDateString()}
