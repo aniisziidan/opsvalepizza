@@ -37,6 +37,20 @@
 | P2 | Middleware doesn't re-check `active`/role | ✅ Resolved | JWT callback re-validates the live `AdminUser` every 5 min and drops the session when the account is gone/inactive (`lib/auth.ts` + pure `lib/auth/sessionRevalidation.ts`); the admin layout re-checks `active` at the shell chokepoint and redirects stale sessions to login; session `maxAge` shortened to 12h. |
 | P3 | Node doc mismatch, redundant route stubs, PDF number/date localization, anomaly emission, true E2E | ✅ Mostly resolved | **Node doc** reconciled (`DEPLOYMENT.md` = "20.x or 22.x", Dockerfile `node:20` — consistent). **Route stubs pruned** (`app/(marketing)/**`, `app/calculator`, `app/quote/page.tsx` removed; middleware already redirects every non-localized path — `app/quote/actions.ts` kept, it's the real submission action). **PDF locale** done (`lib/pdf/formatLocale.ts`). **Anomaly emission wired**: `lib/analytics/anomalyEmission.ts` (pure, unit-tested) maps health alerts → `AnalyticsAlertEvent`, dispatched by new `/api/cron/detect-anomalies` (deduped by `incidentKey`). **E2E**: pipeline scaffold `tests/e2e/pipeline.spec.ts` added (skip-by-default; needs seeded DB + admin creds). Also: DB **restore runbook** documented in `DEPLOYMENT.md`. |
 
+### Post-audit feature additions (2026-09-06)
+
+- **Landed-cost calculator + log (F-041, PR #20/#21/#22).** New admin module at `/admin/landed-cost`
+  for building a shipment's landed cost from freeform expense lines (free-text label + stage
+  `ORIGIN|FREIGHT|DESTINATION|FINANCIAL` + min/max €), with one shipment-quantity input driving the
+  per-box figure. Each save is a **versioned, audit-logged** record (`LandedCostCalc`, `groupId`
+  lineage, `LANDED_COST_CALC` in `PricingEntityType`), mirroring the existing `LandedCost`/`PricingRule`
+  pattern. Pure compute is unit-tested (`lib/pricing/landedCostCalc.ts`); server recomputes totals
+  authoritatively on save. UI supports **Clone** (pre-fill as a new lineage) and **edited/unchanged/new**
+  row markers when cloning or editing. **Standalone/record-keeping** — it does *not* feed quoting or the
+  public calculator; a future `pushToLandedCostTier` action is designed for but deliberately out of scope
+  (product-only-vs-freight double-count decision deferred). Spec/plan:
+  `docs/superpowers/{specs,plans}/2026-09-06-landed-cost-calculator*`.
+
 ---
 
 ## 1. Executive Summary
@@ -139,6 +153,7 @@ OpsVale is a **Next.js 15 / React 19 / Prisma 6 / PostgreSQL** monorepo that imp
 | F-038 | Error boundaries | public/global/admin w/ digest IDs | `app/error.tsx`, `global-error.tsx`, `admin/error.tsx` | 🟢 |
 | F-039 | Pricing audit log | CREATE/VERSION_UPDATE/TOGGLE/RETIRE | `PricingAuditLog` + excel/manual actions | 🟢 |
 | F-040 | Admin audit log | Admin lifecycle events | `AdminAuditLog` + settings actions | 🟢 |
+| F-041 | Landed-cost calculator + log | Freeform shipment expenses (label+stage+min/max €) → per-box landed cost; versioned, audit-logged records; clone + edited/unchanged row markers | `lib/pricing/landedCostCalc.ts`, `app/admin/landed-cost/*`, `components/admin/LandedCostCalculator.tsx`, `LandedCostCalc` | 🟢 (PR #20/#21/#22) |
 
 ---
 
