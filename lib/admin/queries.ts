@@ -269,6 +269,7 @@ export interface LandedCalcRow {
   perBoxMaxEur: string;
   active: boolean;
   effectiveFrom: string;
+  createdAt: string;
   authorName: string | null;
 }
 
@@ -286,6 +287,7 @@ function mapLandedCalcRow(r: {
   perBoxMaxEur: { toString(): string };
   active: boolean;
   effectiveFrom: Date;
+  createdAt: Date;
   author: { name: string } | null;
 }): LandedCalcRow {
   return {
@@ -304,6 +306,7 @@ function mapLandedCalcRow(r: {
     perBoxMaxEur: r.perBoxMaxEur.toString(),
     active: r.active,
     effectiveFrom: r.effectiveFrom.toISOString(),
+    createdAt: r.createdAt.toISOString(),
     authorName: r.author?.name ?? null,
   };
 }
