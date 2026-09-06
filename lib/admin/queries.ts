@@ -5,6 +5,7 @@ import { ActivityType, QuoteStatus, RuleScope, CostSource, PricingEntityType, Pr
 import { selectActiveCorridor, effectiveLandedCost, type CorridorCandidate } from '@/lib/pricing/logistics';
 import { resolvePublicRange } from '@/lib/pricing/publicRange';
 import { compactBreakdownLines } from '@/lib/pricing/breakdownFormat';
+import type { CalcLine } from '@/lib/pricing/landedCostCalc';
 
 export interface LeadSummaryRow {
   id: string;
@@ -250,6 +251,81 @@ export interface LogisticsRow {
   inlandEur: string | null;
   otherEur: string | null;
   active: boolean;
+}
+
+export interface LandedCalcRow {
+  id: string;
+  groupId: string;
+  title: string;
+  countryCode: string;
+  countryName: string;
+  boxConfigId: string;
+  boxLabel: string;
+  shipmentQty: number;
+  lines: CalcLine[];
+  shipmentMinEur: string;
+  shipmentMaxEur: string;
+  perBoxMinEur: string;
+  perBoxMaxEur: string;
+  active: boolean;
+  effectiveFrom: string;
+  authorName: string | null;
+}
+
+function mapLandedCalcRow(r: {
+  id: string;
+  groupId: string;
+  title: string;
+  country: { code: string; name: string };
+  boxConfig: { id: string; sizeLabel: string };
+  shipmentQty: number;
+  lines: unknown;
+  shipmentMinEur: { toString(): string };
+  shipmentMaxEur: { toString(): string };
+  perBoxMinEur: { toString(): string };
+  perBoxMaxEur: { toString(): string };
+  active: boolean;
+  effectiveFrom: Date;
+  author: { name: string } | null;
+}): LandedCalcRow {
+  return {
+    id: r.id,
+    groupId: r.groupId,
+    title: r.title,
+    countryCode: r.country.code,
+    countryName: r.country.name,
+    boxConfigId: r.boxConfig.id,
+    boxLabel: r.boxConfig.sizeLabel,
+    shipmentQty: r.shipmentQty,
+    lines: (Array.isArray(r.lines) ? r.lines : []) as CalcLine[],
+    shipmentMinEur: r.shipmentMinEur.toString(),
+    shipmentMaxEur: r.shipmentMaxEur.toString(),
+    perBoxMinEur: r.perBoxMinEur.toString(),
+    perBoxMaxEur: r.perBoxMaxEur.toString(),
+    active: r.active,
+    effectiveFrom: r.effectiveFrom.toISOString(),
+    authorName: r.author?.name ?? null,
+  };
+}
+
+/** Active landed-cost calculations for the log list (latest version per group). */
+export async function getLandedCalcs(): Promise<LandedCalcRow[]> {
+  const records = await prisma.landedCostCalc.findMany({
+    where: { active: true },
+    include: { country: true, boxConfig: true, author: true },
+    orderBy: { effectiveFrom: 'desc' },
+  });
+  return records.map(mapLandedCalcRow);
+}
+
+/** Full version history (active + retired) for one calculation lineage. */
+export async function getLandedCalcHistory(groupId: string): Promise<LandedCalcRow[]> {
+  const records = await prisma.landedCostCalc.findMany({
+    where: { groupId },
+    include: { country: true, boxConfig: true, author: true },
+    orderBy: { effectiveFrom: 'desc' },
+  });
+  return records.map(mapLandedCalcRow);
 }
 
 export interface LeadListOptions {
