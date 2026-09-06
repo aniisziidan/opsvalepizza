@@ -21,6 +21,7 @@ const STATIC_NAV_ITEMS: SearchResultItem[] = [
   { id: 'nav-quotes', title: 'Commercial Quotes', subtitle: 'Manage active proposals & revisions', category: 'NAVIGATION', icon: 'request_quote', href: '/admin/quotes' },
   { id: 'nav-pricing', title: 'Pricing Engine & Matrix', subtitle: 'Landed cost tiers & markup rules', category: 'NAVIGATION', icon: 'monetization_on', href: '/admin/pricing' },
   { id: 'nav-logistics', title: 'European Logistics Hubs', subtitle: 'Freight corridors & hub rates', category: 'NAVIGATION', icon: 'local_shipping', href: '/admin/logistics' },
+  { id: 'nav-landed-cost', title: 'Landed-Cost Calculator', subtitle: 'Itemize shipment expenses & log per-box cost', category: 'NAVIGATION', icon: 'calculate', href: '/admin/landed-cost' },
   { id: 'nav-visitors', title: 'Visitor Intelligence', subtitle: 'Privacy-aware session analytics', category: 'NAVIGATION', icon: 'travel_explore', href: '/admin/visitors' },
   { id: 'nav-analytics', title: 'Sales Analytics & KPIs', subtitle: 'Conversion funnels & velocity', category: 'NAVIGATION', icon: 'monitoring', href: '/admin/analytics' },
   { id: 'nav-notifications', title: 'Notification Center', subtitle: 'Customer activity feed & alerts', category: 'NAVIGATION', icon: 'notifications', href: '/admin/notifications' },

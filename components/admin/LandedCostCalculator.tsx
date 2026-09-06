@@ -22,18 +22,42 @@ interface Props {
 }
 
 interface DraftLine {
+  id: string;
   label: string;
   stage: Stage;
   minEur: string;
   maxEur: string;
 }
 
+/** A frozen copy of the form as it was loaded, used to diff edits row-by-row. */
+interface Baseline {
+  sourceTitle: string;
+  title: string;
+  countryId: string;
+  boxConfigId: string;
+  shipmentQty: string;
+  linesById: Record<string, { label: string; stage: Stage; minEur: string; maxEur: string }>;
+}
+
+type LineStatus = 'unchanged' | 'edited' | 'added' | null;
+
 const eur2 = (n: number) => `€${n.toFixed(2)}`;
 const eur4 = (n: number) => `€${n.toFixed(4)}`;
 const rangeStr = (min: number, max: number, fmt: (n: number) => string) =>
   min === max ? fmt(min) : `${fmt(min)}–${fmt(max)}`;
 
-const emptyLine = (): DraftLine => ({ label: '', stage: 'ORIGIN', minEur: '0', maxEur: '0' });
+const newId = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `l_${Math.random().toString(36).slice(2)}`;
+
+const emptyLine = (): DraftLine => ({
+  id: newId(),
+  label: '',
+  stage: 'ORIGIN',
+  minEur: '0',
+  maxEur: '0',
+});
 
 function toCalcLines(draft: DraftLine[]): CalcLine[] {
   return draft.map((d) => ({
@@ -44,12 +68,42 @@ function toCalcLines(draft: DraftLine[]): CalcLine[] {
   }));
 }
 
+const EditedTag = () => (
+  <span className="text-[#e77114] normal-case font-normal ml-1">(edited)</span>
+);
+
+const StatusMarker: React.FC<{ status: LineStatus }> = ({ status }) => {
+  if (status === 'edited')
+    return (
+      <span className="material-symbols-outlined text-[#e77114] text-base" title="Edited">
+        edit
+      </span>
+    );
+  if (status === 'added')
+    return (
+      <span className="material-symbols-outlined text-emerald-600 text-base" title="New row">
+        add_circle
+      </span>
+    );
+  if (status === 'unchanged')
+    return (
+      <span
+        className="material-symbols-outlined text-[#c5c6ce] text-base"
+        title="Unchanged from original"
+      >
+        remove
+      </span>
+    );
+  return <span className="w-4" />;
+};
+
 export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxConfigs }) => {
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [baseline, setBaseline] = useState<Baseline | null>(null);
   const [title, setTitle] = useState('');
   const [countryId, setCountryId] = useState(countries[0]?.id || '');
   const [boxConfigId, setBoxConfigId] = useState(boxConfigs[0]?.id || '');
@@ -63,6 +117,7 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
 
   const resetForm = () => {
     setEditingId(null);
+    setBaseline(null);
     setTitle('');
     setCountryId(countries[0]?.id || '');
     setBoxConfigId(boxConfigs[0]?.id || '');
@@ -70,32 +125,72 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
     setLines([emptyLine()]);
   };
 
-  const loadForEdit = (row: LandedCalcRow) => {
+  /** Loads a logged calc into the builder. `clone` starts a new lineage; otherwise it versions. */
+  const loadFrom = (row: LandedCalcRow, clone: boolean) => {
     setErrorMsg(null);
     setSuccessMsg(null);
-    setEditingId(row.id);
-    setTitle(row.title);
-    setCountryId(countries.find((c) => c.code === row.countryCode)?.id || countries[0]?.id || '');
+
+    const nextTitle = clone ? `Copy of ${row.title}` : row.title;
+    const nextCountryId =
+      countries.find((c) => c.code === row.countryCode)?.id || countries[0]?.id || '';
+    const nextQty = String(row.shipmentQty);
+    const draftLines: DraftLine[] = (row.lines.length ? row.lines : []).map((l) => ({
+      id: newId(),
+      label: l.label,
+      stage: l.stage,
+      minEur: String(l.minEur),
+      maxEur: String(l.maxEur),
+    }));
+    const finalLines = draftLines.length ? draftLines : [emptyLine()];
+
+    setEditingId(clone ? null : row.id);
+    setTitle(nextTitle);
+    setCountryId(nextCountryId);
     setBoxConfigId(row.boxConfigId);
-    setShipmentQty(String(row.shipmentQty));
-    setLines(
-      row.lines.length
-        ? row.lines.map((l) => ({
-            label: l.label,
-            stage: l.stage,
-            minEur: String(l.minEur),
-            maxEur: String(l.maxEur),
-          }))
-        : [emptyLine()]
-    );
+    setShipmentQty(nextQty);
+    setLines(finalLines);
+
+    // Snapshot the form as-loaded so subsequent edits can be highlighted.
+    const linesById: Baseline['linesById'] = {};
+    for (const l of finalLines) {
+      linesById[l.id] = { label: l.label, stage: l.stage, minEur: l.minEur, maxEur: l.maxEur };
+    }
+    setBaseline({
+      sourceTitle: row.title,
+      title: nextTitle,
+      countryId: nextCountryId,
+      boxConfigId: row.boxConfigId,
+      shipmentQty: nextQty,
+      linesById,
+    });
+
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const updateLine = (i: number, patch: Partial<DraftLine>) =>
-    setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  const lineStatus = (line: DraftLine): LineStatus => {
+    if (!baseline) return null;
+    const base = baseline.linesById[line.id];
+    if (!base) return 'added';
+    const same =
+      base.label === line.label &&
+      base.stage === line.stage &&
+      base.minEur === line.minEur &&
+      base.maxEur === line.maxEur;
+    return same ? 'unchanged' : 'edited';
+  };
+
+  const headerEdited = {
+    title: baseline ? baseline.title !== title : false,
+    country: baseline ? baseline.countryId !== countryId : false,
+    box: baseline ? baseline.boxConfigId !== boxConfigId : false,
+    qty: baseline ? baseline.shipmentQty !== shipmentQty : false,
+  };
+
+  const updateLine = (id: string, patch: Partial<DraftLine>) =>
+    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   const addLine = () => setLines((prev) => [...prev, emptyLine()]);
-  const removeLine = (i: number) =>
-    setLines((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
+  const removeLine = (id: string) =>
+    setLines((prev) => (prev.length === 1 ? prev : prev.filter((l) => l.id !== id)));
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,6 +243,12 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
     });
   };
 
+  const heading = editingId
+    ? 'Edit Calculation (saves as new version)'
+    : baseline
+      ? `Clone of “${baseline.sourceTitle}” (saves as new calculation)`
+      : 'New Calculation';
+
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 space-y-6 bg-[#f8f9ff]">
       {/* Header */}
@@ -184,23 +285,23 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
           className="lg:col-span-2 bg-white border border-[#c5c6ce] rounded-xl p-6 shadow-sm space-y-5 font-mono-data text-xs"
         >
           <div className="flex items-center justify-between">
-            <h2 className="font-headline text-lg font-bold text-[#041632]">
-              {editingId ? 'Edit Calculation (saves as new version)' : 'New Calculation'}
-            </h2>
-            {editingId && (
+            <h2 className="font-headline text-lg font-bold text-[#041632]">{heading}</h2>
+            {baseline && (
               <button
                 type="button"
                 onClick={resetForm}
                 className="text-[#041632] hover:text-[#e77114] underline"
               >
-                Cancel edit
+                Cancel
               </button>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-gray-700 mb-1 font-semibold">Title</label>
+              <label className="block text-gray-700 mb-1 font-semibold">
+                Title{headerEdited.title && <EditedTag />}
+              </label>
               <input
                 type="text"
                 value={title}
@@ -210,7 +311,9 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
               />
             </div>
             <div>
-              <label className="block text-gray-700 mb-1 font-semibold">Destination Country</label>
+              <label className="block text-gray-700 mb-1 font-semibold">
+                Destination Country{headerEdited.country && <EditedTag />}
+              </label>
               <select
                 value={countryId}
                 onChange={(e) => setCountryId(e.target.value)}
@@ -224,7 +327,9 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
               </select>
             </div>
             <div>
-              <label className="block text-gray-700 mb-1 font-semibold">Box Configuration</label>
+              <label className="block text-gray-700 mb-1 font-semibold">
+                Box Configuration{headerEdited.box && <EditedTag />}
+              </label>
               <select
                 value={boxConfigId}
                 onChange={(e) => setBoxConfigId(e.target.value)}
@@ -238,7 +343,9 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
               </select>
             </div>
             <div>
-              <label className="block text-gray-700 mb-1 font-semibold">Boxes per Shipment</label>
+              <label className="block text-gray-700 mb-1 font-semibold">
+                Boxes per Shipment{headerEdited.qty && <EditedTag />}
+              </label>
               <input
                 type="number"
                 min="1"
@@ -262,55 +369,87 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
                 <span className="material-symbols-outlined text-sm">add_circle</span> Add line
               </button>
             </div>
+
+            {baseline && (
+              <div className="flex flex-wrap gap-4 text-[10px] text-[#75777e] pb-1">
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[#c5c6ce] text-sm">remove</span>
+                  unchanged
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[#e77114] text-sm">edit</span>
+                  edited
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-emerald-600 text-sm">add_circle</span>
+                  new
+                </span>
+              </div>
+            )}
+
             <div className="space-y-2">
-              {lines.map((l, i) => (
-                <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                  <input
-                    type="text"
-                    value={l.label}
-                    placeholder="e.g. Ocean freight"
-                    onChange={(e) => updateLine(i, { label: e.target.value })}
-                    className="col-span-5 h-9 px-2 border border-[#c5c6ce] rounded-lg focus:ring-2 focus:ring-[#041632]"
-                  />
-                  <select
-                    value={l.stage}
-                    onChange={(e) => updateLine(i, { stage: e.target.value as Stage })}
-                    className="col-span-3 h-9 px-2 border border-[#c5c6ce] rounded-lg bg-white focus:ring-2 focus:ring-[#041632]"
-                  >
-                    {STAGES.map((s) => (
-                      <option key={s} value={s}>
-                        {STAGE_LABELS[s]}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={l.minEur}
-                    onChange={(e) => updateLine(i, { minEur: e.target.value })}
-                    className="col-span-1 h-9 px-2 border border-[#c5c6ce] rounded-lg focus:ring-2 focus:ring-[#041632]"
-                    title="Min €"
-                  />
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={l.maxEur}
-                    onChange={(e) => updateLine(i, { maxEur: e.target.value })}
-                    className="col-span-2 h-9 px-2 border border-[#c5c6ce] rounded-lg focus:ring-2 focus:ring-[#041632]"
-                    title="Max €"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeLine(i)}
-                    className="col-span-1 text-gray-400 hover:text-[#ba1a1a] flex justify-center"
-                    title="Remove line"
-                  >
-                    <span className="material-symbols-outlined text-base">delete</span>
-                  </button>
-                </div>
-              ))}
+              {lines.map((l) => {
+                const status = lineStatus(l);
+                const accent =
+                  status === 'edited'
+                    ? 'border-[#e77114]'
+                    : status === 'added'
+                      ? 'border-emerald-500'
+                      : 'border-transparent';
+                return (
+                  <div key={l.id} className={`flex items-center gap-2 border-l-2 pl-2 ${accent}`}>
+                    <div className="w-4 flex justify-center flex-shrink-0">
+                      <StatusMarker status={status} />
+                    </div>
+                    <div className="grid grid-cols-12 gap-2 items-center flex-1">
+                      <input
+                        type="text"
+                        value={l.label}
+                        placeholder="e.g. Ocean freight"
+                        onChange={(e) => updateLine(l.id, { label: e.target.value })}
+                        className="col-span-5 h-9 px-2 border border-[#c5c6ce] rounded-lg focus:ring-2 focus:ring-[#041632]"
+                      />
+                      <select
+                        value={l.stage}
+                        onChange={(e) => updateLine(l.id, { stage: e.target.value as Stage })}
+                        className="col-span-3 h-9 px-2 border border-[#c5c6ce] rounded-lg bg-white focus:ring-2 focus:ring-[#041632]"
+                      >
+                        {STAGES.map((s) => (
+                          <option key={s} value={s}>
+                            {STAGE_LABELS[s]}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={l.minEur}
+                        onChange={(e) => updateLine(l.id, { minEur: e.target.value })}
+                        className="col-span-1 h-9 px-2 border border-[#c5c6ce] rounded-lg focus:ring-2 focus:ring-[#041632]"
+                        title="Min €"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={l.maxEur}
+                        onChange={(e) => updateLine(l.id, { maxEur: e.target.value })}
+                        className="col-span-2 h-9 px-2 border border-[#c5c6ce] rounded-lg focus:ring-2 focus:ring-[#041632]"
+                        title="Max €"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeLine(l.id)}
+                        className="col-span-1 text-gray-400 hover:text-[#ba1a1a] flex justify-center"
+                        title="Remove line"
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -397,9 +536,16 @@ export const LandedCostCalculator: React.FC<Props> = ({ calcs, countries, boxCon
                     <td className="px-4 py-3 text-[#75777e]">
                       {new Date(c.effectiveFrom).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-3 text-right space-x-3">
+                    <td className="px-6 py-3 text-right space-x-3 whitespace-nowrap">
                       <button
-                        onClick={() => loadForEdit(c)}
+                        onClick={() => loadFrom(c, true)}
+                        className="text-[#041632] hover:text-[#e77114] font-semibold"
+                        title="Start a new calculation pre-filled from this one"
+                      >
+                        Clone
+                      </button>
+                      <button
+                        onClick={() => loadFrom(c, false)}
                         className="text-[#041632] hover:text-[#e77114] font-semibold"
                       >
                         Edit
