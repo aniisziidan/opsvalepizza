@@ -67,6 +67,8 @@ export interface Dictionary {
     formulaDisclaimer: string;
     requestExactQuotePrompt: string;
     missingDataPrompt: string;
+    alreadyCompetitiveTitle: string;
+    alreadyCompetitiveBody: string;
   };
   products: {
     title: string;

@@ -72,6 +72,8 @@ export const de: Dictionary = {
       'Schätzungen sind indikativ und basieren auf aktiven Korridor-Einstandskosten. Formelle Angebote enthalten Frachtoptimierung und Mengenstaffelrabatte.',
     requestExactQuotePrompt: 'Sichern Sie sich diese Konditionen mit einem offiziellen Angebot für Ihre Filialen.',
     missingDataPrompt: 'Sonderformate oder individuelle Spezifikationen erfordern eine dedizierte Frachtkalkulation.',
+    alreadyCompetitiveTitle: 'Sie kaufen bereits ausgezeichnet ein.',
+    alreadyCompetitiveBody: 'Ihr aktueller Preis liegt auf oder unter unserer geschätzten Spanne. Bei Ihrem Volumen lassen sich oft dennoch bessere Konditionen bei Lieferzeiten, Mindestmengen oder individuellem Druck erzielen — fordern Sie ein genaues Angebot an und lassen Sie uns sehen, was möglich ist.',
   },
   products: {
     title: 'Standard-Verpackungskatalog',

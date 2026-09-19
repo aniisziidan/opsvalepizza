@@ -72,6 +72,8 @@ export const it: Dictionary = {
       'Le stime sono indicative e basate sui costi di trasporto attivi. I preventivi formali includono sconti su scala e ottimizzazione carichi.',
     requestExactQuotePrompt: 'Blocca questa tariffa con una proposta commerciale su misura per i tuoi punti vendita.',
     missingDataPrompt: 'Formati speciali e scatole sagomate richiedono una quotazione logistica dedicata.',
+    alreadyCompetitiveTitle: 'Stai già acquistando a ottime condizioni.',
+    alreadyCompetitiveBody: 'Il tuo prezzo attuale è pari o inferiore alla nostra fascia stimata. Con i tuoi volumi spesso è comunque possibile ottenere condizioni migliori su tempi di consegna, quantità minime o stampa personalizzata — richiedi un preventivo esatto e vediamo cosa possiamo fare.',
   },
   products: {
     title: 'Catalogo Packaging Standard',

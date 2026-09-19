@@ -72,6 +72,8 @@ export const fr: Dictionary = {
       'Les estimations sont indicatives et basées sur les coûts d’acheminement actifs. Les devis formels intègrent des remises sur volume et l’optimisation fret.',
     requestExactQuotePrompt: 'Verrouillez ce tarif avec un devis commercial ferme adapté à votre réseau.',
     missingDataPrompt: 'Les dimensions sur mesure nécessitent un calcul logistique spécifique.',
+    alreadyCompetitiveTitle: 'Vous achetez déjà à très bon prix.',
+    alreadyCompetitiveBody: 'Votre prix actuel est égal ou inférieur à notre fourchette estimée. À votre niveau de volume, il reste souvent des marges de progression sur les délais, les quantités minimales ou l’impression personnalisée — demandez un devis exact et voyons ce que nous pouvons faire.',
   },
   products: {
     title: 'Catalogue des Emballages Standards',
