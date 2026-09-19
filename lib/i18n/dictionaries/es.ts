@@ -72,6 +72,8 @@ export const es: Dictionary = {
       'Las estimaciones son orientativas y se basan en costes logísticos activos. Las ofertas formales incluyen descuentos por volumen y optimización de flete.',
     requestExactQuotePrompt: 'Fije estas condiciones con un presupuesto comercial adaptado a sus locales.',
     missingDataPrompt: 'Formatos especiales o medidas a medida requieren un cálculo logístico específico.',
+    alreadyCompetitiveTitle: 'Ya estás comprando a muy buen precio.',
+    alreadyCompetitiveBody: 'Tu precio actual está en o por debajo de nuestra franja estimada. Con tu volumen, a menudo aún es posible mejorar condiciones en plazos de entrega, cantidades mínimas o impresión personalizada — solicita un presupuesto exacto y veamos qué podemos hacer.',
   },
   products: {
     title: 'Catálogo de Envases Estándar',

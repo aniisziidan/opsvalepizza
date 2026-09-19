@@ -170,6 +170,10 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
 
   const available = result?.available === true;
   const unavailable = result?.available === false;
+  // Prospect already pays at or below our entire estimated range: even the
+  // best-case per-box saving is clamped to 0, so there is nothing to "save".
+  // Show a dedicated, professional state instead of "€0 cost reduction".
+  const alreadyCompetitive = available && result.savings.perBoxMax <= 0;
 
   const yearlyForQuote =
     result && result.available ? Math.round(result.savings.yearlyMax) : 0;
@@ -473,6 +477,40 @@ export const SavingsCalculatorPage: React.FC<SavingsCalculatorPageProps> = ({
                       <p className="font-body text-base text-[#dce9ff] leading-relaxed">
                         {t('calculator.missingDataPrompt')}
                       </p>
+                    </div>
+
+                    <div className="mt-8 pt-6 border-t border-white/20 space-y-4 mt-auto">
+                      <button
+                        type="button"
+                        onClick={handleRequestQuote}
+                        className="w-full bg-[#ffdeac] text-[#281900] py-3.5 px-6 rounded-lg font-mono-data text-xs uppercase tracking-widest hover:bg-[#fddba7] transition-colors shadow-md flex items-center justify-center gap-2 font-bold cursor-pointer"
+                      >
+                        {t('common.requestQuoteCta')}
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                      </button>
+                      <p className="text-[11px] text-[#cbdbf5]/70 text-center leading-tight">
+                        {t('calculator.formulaDisclaimer')}
+                      </p>
+                    </div>
+                  </div>
+                ) : alreadyCompetitive ? (
+                  <div className="flex-grow flex flex-col">
+                    <div className="bg-[#213145]/70 border border-white/10 rounded-lg p-6 flex flex-col items-start gap-4">
+                      <span className="material-symbols-outlined text-3xl text-[#ffdeac]">
+                        verified
+                      </span>
+                      <h3 className="font-headline text-xl font-semibold text-white">
+                        {t('calculator.alreadyCompetitiveTitle')}
+                      </h3>
+                      <p className="font-body text-base text-[#dce9ff] leading-relaxed">
+                        {t('calculator.alreadyCompetitiveBody')}
+                      </p>
+                      <div className="flex justify-between w-full pt-4 mt-2 border-t border-white/10 font-mono-data text-xs text-[#cbdbf5]">
+                        <span>OpsVale Price Range:</span>
+                        <span className="font-semibold text-[#e3c290]">
+                          €{result.priceRange.minEur.toFixed(2)} – €{result.priceRange.maxEur.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="mt-8 pt-6 border-t border-white/20 space-y-4 mt-auto">

@@ -72,6 +72,8 @@ export const en: Dictionary = {
       'Estimates are indicative and based on active corridor landed costs. Formal quotes include custom freight optimization and volume tier discounts.',
     requestExactQuotePrompt: 'Lock in this pricing with an official commercial quote tailored to your exact branch requirements.',
     missingDataPrompt: 'Specialized dimensions or custom configurations require dedicated logistics calculation.',
+    alreadyCompetitiveTitle: "You're already sourcing sharply.",
+    alreadyCompetitiveBody: 'Your current price is at or below our estimated range. Volume buyers at your level often still unlock better terms on lead time, MOQs, or custom print — request an exact quote and let’s see what we can do.',
   },
   products: {
     title: 'Standard Packaging Catalog',
